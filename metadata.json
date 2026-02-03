@@ -1,0 +1,7 @@
+{
+  "name": "IronMind - AI Gym Tracker",
+  "description": "A clean, iOS-inspired personal workout tracker that uses AI to analyze your progression and provides monthly reports based on your specific weekly routine.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
