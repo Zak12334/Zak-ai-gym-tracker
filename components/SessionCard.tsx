@@ -6,9 +6,10 @@ import { calculateSessionVolume, formatDuration } from '../utils';
 interface SessionCardProps {
   session: WorkoutSession;
   onDelete?: () => void;
+  onEdit?: () => void;
 }
 
-export const SessionCard: React.FC<SessionCardProps> = ({ session, onDelete }) => {
+export const SessionCard: React.FC<SessionCardProps> = ({ session, onDelete, onEdit }) => {
   const volume = calculateSessionVolume(session);
   const date = new Date(session.date).toLocaleDateString(undefined, {
     weekday: 'short',
@@ -17,7 +18,10 @@ export const SessionCard: React.FC<SessionCardProps> = ({ session, onDelete }) =
   });
 
   return (
-    <div className="bg-slate-900/30 rounded-2xl p-4 mb-3 border border-white/5 flex justify-between items-center group relative overflow-hidden backdrop-blur-sm">
+    <div
+      onClick={onEdit}
+      className="bg-slate-900/30 rounded-2xl p-4 mb-3 border border-white/5 flex justify-between items-center group relative overflow-hidden backdrop-blur-sm cursor-pointer active:bg-slate-800/50 transition-colors"
+    >
       <div className="flex-1">
         <h3 className="font-bold text-white text-lg tracking-tight uppercase italic">{session.type}</h3>
         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{date} • {formatDuration(session.duration || 0)}</p>

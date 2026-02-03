@@ -8,7 +8,7 @@ import { generateMonthlyReport } from './services/geminiService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import supabase from './supabaseClient';
 
-type View = 'Home' | 'Active' | 'History' | 'Report';
+type View = 'Home' | 'Active' | 'History' | 'Report' | 'EditSession';
 
 const Onboarding: React.FC<{ onComplete: (profile: any) => void }> = ({ onComplete }) => {
   const [name, setName] = useState('');
@@ -139,6 +139,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   const [preferredMachines, setPreferredMachines] = useState<Record<string, string[]>>({});
+  const [editingSession, setEditingSession] = useState<WorkoutSession | null>(null);
   const timerRef = useRef<number | null>(null);
 
   // Helper to persist active session to localStorage
@@ -414,6 +415,59 @@ const App: React.FC = () => {
     }
   };
 
+  // Edit saved session functions
+  const openEditSession = (session: WorkoutSession) => {
+    setEditingSession({ ...session, exercises: session.exercises.map(ex => ({ ...ex, sets: [...ex.sets] })) });
+    setView('EditSession');
+  };
+
+  const removeExerciseFromEdit = (exerciseId: string) => {
+    setEditingSession(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        exercises: prev.exercises.filter(ex => ex.id !== exerciseId)
+      };
+    });
+  };
+
+  const removeSetFromEdit = (exerciseId: string, setId: string) => {
+    setEditingSession(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        exercises: prev.exercises.map(ex =>
+          ex.id === exerciseId
+            ? { ...ex, sets: ex.sets.filter(s => s.id !== setId) }
+            : ex
+        )
+      };
+    });
+  };
+
+  const saveEditedSession = async () => {
+    if (!editingSession) return;
+
+    const { error } = await supabase
+      .from('sessions')
+      .update({ exercises: editingSession.exercises })
+      .eq('id', editingSession.id);
+
+    if (error) {
+      console.error("Error updating session:", error);
+      alert("Failed to save changes. Check connection.");
+    } else {
+      setHistory(prev => prev.map(s => s.id === editingSession.id ? { ...s, exercises: editingSession.exercises } : s));
+      setEditingSession(null);
+      setView('History');
+    }
+  };
+
+  const cancelEditSession = () => {
+    setEditingSession(null);
+    setView('History');
+  };
+
   const fetchAiReport = async () => {
     if (history.length < 8) {
       alert(`Zak, IronMind needs at least 8 sessions (2 weeks) to identify progression patterns. Progress: ${history.length}/8`);
@@ -572,7 +626,7 @@ const App: React.FC = () => {
       </div>
       {history.length === 0 ? (
         <div className="mt-20 text-center opacity-20"><p className="font-black italic text-2xl mb-2 uppercase">No Data</p></div>
-      ) : history.map(s => <SessionCard key={s.id} session={s} onDelete={() => deleteSession(s.id)} />)}
+      ) : history.map(s => <SessionCard key={s.id} session={s} onDelete={() => deleteSession(s.id)} onEdit={() => openEditSession(s)} />)}
     </div>
   );
 
@@ -622,6 +676,70 @@ const App: React.FC = () => {
     </div>
   );
 
+  const renderEditSession = () => {
+    if (!editingSession) return null;
+    const volume = editingSession.exercises.reduce((acc, ex) =>
+      acc + ex.sets.reduce((setAcc, set) => setAcc + (set.weight * set.reps), 0), 0
+    );
+
+    return (
+      <div className="p-6 pb-24 animate-in fade-in duration-500">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <button onClick={cancelEditSession} className="text-white bg-slate-900 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 active:bg-slate-800">←</button>
+            <div>
+              <h2 className="text-2xl font-black italic tracking-tighter uppercase">{editingSession.type}</h2>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                {new Date(editingSession.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+              </p>
+            </div>
+          </div>
+          <button onClick={saveEditedSession} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-tighter text-sm active:scale-95 transition-transform">Save</button>
+        </div>
+
+        <div className="bg-slate-900/30 rounded-2xl p-4 mb-6 border border-white/5">
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Current Volume</p>
+          <p className="text-2xl font-black text-blue-500">{volume.toLocaleString()} kg</p>
+        </div>
+
+        <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest mb-4">Tap X to remove exercises or sets</p>
+
+        {editingSession.exercises.map((ex) => (
+          <div key={ex.id} className="bg-slate-950 rounded-3xl p-5 mb-4 border border-white/10 shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-lg font-black text-white">{ex.name || 'Unnamed Exercise'}</span>
+              <button onClick={() => removeExerciseFromEdit(ex.id)} className="text-red-500 bg-red-950/30 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider active:bg-red-900">Remove</button>
+            </div>
+
+            <div className="space-y-2">
+              {ex.sets.map((set, idx) => (
+                <div key={set.id} className="flex items-center justify-between bg-white/5 rounded-xl p-3">
+                  <div className="flex items-center gap-4">
+                    <span className="text-[10px] font-black text-slate-600">#{idx + 1}</span>
+                    <span className="font-bold text-blue-400">{set.weight} kg</span>
+                    <span className="text-slate-500">×</span>
+                    <span className="font-bold text-white">{set.reps} reps</span>
+                    <span className="text-[10px] text-slate-600">= {set.weight * set.reps} kg</span>
+                  </div>
+                  <button onClick={() => removeSetFromEdit(ex.id, set.id)} className="text-red-900/50 hover:text-red-500 font-bold text-lg">✕</button>
+                </div>
+              ))}
+              {ex.sets.length === 0 && (
+                <p className="text-slate-700 text-sm italic text-center py-2">No sets</p>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {editingSession.exercises.length === 0 && (
+          <div className="text-center py-12 opacity-30">
+            <p className="font-black italic text-xl uppercase">No exercises</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
@@ -638,7 +756,8 @@ const App: React.FC = () => {
       {view === 'Active' && renderActive()}
       {view === 'History' && renderHistory()}
       {view === 'Report' && renderReport()}
-      {view !== 'Active' && (
+      {view === 'EditSession' && renderEditSession()}
+      {view !== 'Active' && view !== 'EditSession' && (
         <nav className="fixed bottom-6 left-6 right-6 max-w-md mx-auto bg-slate-950/90 ios-blur border border-white/5 h-20 rounded-[40px] safe-bottom flex items-center justify-around z-50 px-4 shadow-2xl">
           <button onClick={() => setView('Home')} className={`p-4 rounded-full transition-all ${view === 'Home' ? 'text-blue-500 scale-110' : 'text-slate-700'}`}><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></button>
           <button onClick={() => setView('History')} className={`p-4 rounded-full transition-all ${view === 'History' ? 'text-blue-500 scale-110' : 'text-slate-700'}`}><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg></button>
