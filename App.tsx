@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { WorkoutSession, DayType, Exercise, Set, UserProfile } from './types';
-import { getWorkoutForToday, generateUUID, formatDuration, getLastPerformanceForExercise } from './utils';
+import { getWorkoutForToday, generateUUID, formatDuration } from './utils';
 import { DEFAULT_EXERCISES } from './constants';
 import { SessionCard } from './components/SessionCard';
 import { generateMonthlyReport } from './services/geminiService';
@@ -141,9 +141,35 @@ const App: React.FC = () => {
   const [preferredMachines, setPreferredMachines] = useState<Record<string, string[]>>({});
   const timerRef = useRef<number | null>(null);
 
+  // Helper to persist active session to localStorage
+  const persistActiveSession = (session: WorkoutSession | null) => {
+    if (session) {
+      localStorage.setItem('activeSession', JSON.stringify(session));
+    } else {
+      localStorage.removeItem('activeSession');
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
+
+      // Restore active session from localStorage if exists
+      const savedSession = localStorage.getItem('activeSession');
+      if (savedSession) {
+        try {
+          const parsed = JSON.parse(savedSession) as WorkoutSession;
+          // Calculate elapsed time from startTime
+          const elapsedSeconds = Math.floor((Date.now() - parsed.startTime) / 1000);
+          setActiveSession(parsed);
+          setTimer(elapsedSeconds);
+          setView('Active');
+        } catch (e) {
+          console.error("Failed to restore session:", e);
+          localStorage.removeItem('activeSession');
+        }
+      }
+
       // Load Profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -180,8 +206,10 @@ const App: React.FC = () => {
   useEffect(() => {
     if (activeSession && !activeSession.endTime) {
       if (timerRef.current) clearInterval(timerRef.current);
+      // Calculate elapsed time from startTime for accuracy
       timerRef.current = window.setInterval(() => {
-        setTimer(prev => prev + 1);
+        const elapsed = Math.floor((Date.now() - activeSession.startTime) / 1000);
+        setTimer(elapsed);
       }, 1000);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -197,15 +225,10 @@ const App: React.FC = () => {
       : DEFAULT_EXERCISES[type as DayType] || [];
 
     const initialExercises = initialExerciseNames.map(name => {
-      const lastPerf = getLastPerformanceForExercise(history, name);
       return {
         id: generateUUID(),
         name,
-        sets: lastPerf ? lastPerf.sets.map(s => ({
-          ...s,
-          id: generateUUID(),
-          timestamp: Date.now()
-        })) : []
+        sets: []  // Start fresh - don't pre-fill sets from previous sessions
       };
     });
 
@@ -216,9 +239,10 @@ const App: React.FC = () => {
       type,
       exercises: initialExercises
     };
-    
+
     setTimer(0);
     setActiveSession(newSession);
+    persistActiveSession(newSession);
     setExpandedSections({ "Back": false, "Abs": false });
     setView('Active');
   };
@@ -241,16 +265,22 @@ const App: React.FC = () => {
   const cancelSession = () => {
     if (window.confirm("Discard session? All current data will be lost.")) {
       setActiveSession(null);
+      persistActiveSession(null);
       setTimer(0);
       setView('Home');
     }
   };
 
   const updateExerciseName = (id: string, newName: string) => {
-    setActiveSession(prev => prev ? {
-      ...prev,
-      exercises: prev.exercises.map(ex => ex.id === id ? { ...ex, name: newName } : ex)
-    } : null);
+    setActiveSession(prev => {
+      if (!prev) return null;
+      const updated = {
+        ...prev,
+        exercises: prev.exercises.map(ex => ex.id === id ? { ...ex, name: newName } : ex)
+      };
+      persistActiveSession(updated);
+      return updated;
+    });
   };
 
   const addExercise = (prefix: string = "") => {
@@ -261,24 +291,31 @@ const App: React.FC = () => {
         name: prefix ? `${prefix}: ` : '',
         sets: []
       };
-      return {
+      const updated = {
         ...prev,
         exercises: [newEx, ...prev.exercises]
       };
+      persistActiveSession(updated);
+      return updated;
     });
   };
 
   const removeExercise = (id: string) => {
-    setActiveSession(prev => prev ? {
-      ...prev,
-      exercises: prev.exercises.filter(ex => ex.id !== id)
-    } : null);
+    setActiveSession(prev => {
+      if (!prev) return null;
+      const updated = {
+        ...prev,
+        exercises: prev.exercises.filter(ex => ex.id !== id)
+      };
+      persistActiveSession(updated);
+      return updated;
+    });
   };
 
   const addSet = (exerciseId: string) => {
     setActiveSession(prev => {
       if (!prev) return null;
-      return {
+      const updated = {
         ...prev,
         exercises: prev.exercises.map(ex => {
           if (ex.id === exerciseId) {
@@ -296,13 +333,15 @@ const App: React.FC = () => {
           return ex;
         })
       };
+      persistActiveSession(updated);
+      return updated;
     });
   };
 
   const adjustWeight = (exerciseId: string, setId: string, amount: number) => {
     setActiveSession(prev => {
       if (!prev) return null;
-      return {
+      const updated = {
         ...prev,
         exercises: prev.exercises.map(ex => {
           if (ex.id === exerciseId) {
@@ -314,13 +353,15 @@ const App: React.FC = () => {
           return ex;
         })
       };
+      persistActiveSession(updated);
+      return updated;
     });
   };
 
   const updateSetField = (exerciseId: string, setId: string, field: 'weight' | 'reps', value: number) => {
     setActiveSession(prev => {
       if (!prev) return null;
-      return {
+      const updated = {
         ...prev,
         exercises: prev.exercises.map(ex => {
           if (ex.id === exerciseId) {
@@ -332,6 +373,8 @@ const App: React.FC = () => {
           return ex;
         })
       };
+      persistActiveSession(updated);
+      return updated;
     });
   };
 
@@ -365,6 +408,7 @@ const App: React.FC = () => {
         setPreferredMachines(prev => ({ ...prev, [activeSession.type]: namesUsed }));
       }
       setActiveSession(null);
+      persistActiveSession(null);
       setTimer(0);
       setView('Home');
     }
@@ -441,7 +485,7 @@ const App: React.FC = () => {
               <input type="number" value={set.reps || ''} onChange={(e) => updateSetField(ex.id, set.id, 'reps', parseInt(e.target.value) || 0)} className="bg-transparent text-center w-full font-black text-lg text-white focus:outline-none" placeholder="0" />
               <span className="text-[8px] text-slate-500 font-bold uppercase">Reps</span>
             </div>
-            <button onClick={() => { setActiveSession(prev => prev ? { ...prev, exercises: prev.exercises.map(e => e.id === ex.id ? { ...e, sets: e.sets.filter(s => s.id !== set.id) } : e) } : null); }} className="col-span-1 text-red-900/50 font-bold text-center">✕</button>
+            <button onClick={() => { setActiveSession(prev => { if (!prev) return null; const updated = { ...prev, exercises: prev.exercises.map(e => e.id === ex.id ? { ...e, sets: e.sets.filter(s => s.id !== set.id) } : e) }; persistActiveSession(updated); return updated; }); }} className="col-span-1 text-red-900/50 font-bold text-center">✕</button>
           </div>
         ))}
       </div>
