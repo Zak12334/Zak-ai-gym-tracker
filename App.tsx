@@ -446,19 +446,32 @@ const App: React.FC = () => {
     });
   };
 
+  const updateEditingDuration = (minutes: number) => {
+    setEditingSession(prev => {
+      if (!prev) return null;
+      return { ...prev, duration: minutes * 60 };
+    });
+  };
+
   const saveEditedSession = async () => {
     if (!editingSession) return;
 
     const { error } = await supabase
       .from('sessions')
-      .update({ exercises: editingSession.exercises })
+      .update({
+        exercises: editingSession.exercises,
+        duration: editingSession.duration
+      })
       .eq('id', editingSession.id);
 
     if (error) {
       console.error("Error updating session:", error);
       alert("Failed to save changes. Check connection.");
     } else {
-      setHistory(prev => prev.map(s => s.id === editingSession.id ? { ...s, exercises: editingSession.exercises } : s));
+      setHistory(prev => prev.map(s => s.id === editingSession.id
+        ? { ...s, exercises: editingSession.exercises, duration: editingSession.duration }
+        : s
+      ));
       setEditingSession(null);
       setView('History');
     }
@@ -710,9 +723,21 @@ const App: React.FC = () => {
           <button onClick={saveEditedSession} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-tighter text-sm active:scale-95 transition-transform">Save</button>
         </div>
 
-        <div className="bg-slate-900/30 rounded-2xl p-4 mb-6 border border-white/5">
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Current Volume</p>
-          <p className="text-2xl font-black text-blue-500">{volume.toLocaleString()} kg</p>
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="bg-slate-900/30 rounded-2xl p-4 border border-white/5">
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Volume</p>
+            <p className="text-2xl font-black text-blue-500">{volume.toLocaleString()} kg</p>
+          </div>
+          <div className="bg-slate-900/30 rounded-2xl p-4 border border-white/5">
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">Duration (mins)</p>
+            <input
+              type="number"
+              value={Math.round((editingSession.duration || 0) / 60)}
+              onChange={(e) => updateEditingDuration(parseInt(e.target.value) || 0)}
+              className="w-full bg-transparent text-2xl font-black text-white focus:outline-none"
+              min="0"
+            />
+          </div>
         </div>
 
         <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest mb-4">Tap X to remove exercises or sets</p>
