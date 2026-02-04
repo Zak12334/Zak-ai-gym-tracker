@@ -4,7 +4,7 @@ import { DayType } from './types';
 export const WEEKLY_SCHEDULE: Record<number, DayType> = {
   1: DayType.ChestTriceps, // Monday
   2: DayType.BackAbs,      // Tuesday
-  3: DayType.Biceps,       // Wednesday
+  3: DayType.BicepsShoulders, // Wednesday
   4: DayType.ChestTriceps, // Thursday
   5: DayType.LegsRearDeltForearms, // Friday
   6: DayType.Rest,         // Saturday
@@ -27,11 +27,13 @@ export const DEFAULT_EXERCISES: Record<DayType, string[]> = {
     "Abs: Machine Crunches",
     "Abs: Hanging Leg Raises"
   ],
-  [DayType.Biceps]: [
-    "EZ Bar Curls", 
-    "Hammer Curls", 
-    "Preacher Machine Curls", 
-    "Cable Bicep Curls"
+  [DayType.BicepsShoulders]: [
+    "EZ Bar Curls",
+    "Hammer Curls",
+    "Preacher Machine Curls",
+    "Cable Bicep Curls",
+    "Shoulder Press",
+    "Lateral Raises"
   ],
   [DayType.LegsRearDeltForearms]: [
     "Leg Press", 

@@ -32,7 +32,7 @@ export interface UserProfile {
 export enum DayType {
   ChestTriceps = "Chest & Triceps",
   BackAbs = "Back & Abs",
-  Biceps = "Biceps",
+  BicepsShoulders = "Biceps & Shoulders",
   LegsRearDeltForearms = "Legs, Rear Delt & Forearms",
   Rest = "Rest Day"
 }
