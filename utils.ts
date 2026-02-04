@@ -1,6 +1,6 @@
 
 import { WEEKLY_SCHEDULE } from './constants';
-import { DayType, WorkoutSession, Exercise } from './types';
+import { DayType, WorkoutSession, Exercise, Set } from './types';
 
 export const getWorkoutForToday = (): DayType => {
   const day = new Date().getDay();
@@ -29,3 +29,282 @@ export const getLastPerformanceForExercise = (history: WorkoutSession[], exercis
 };
 
 export const generateUUID = () => Math.random().toString(36).substr(2, 9);
+
+// Smart Targets - Exercise History Analysis
+
+export interface ExerciseHistoryEntry {
+  date: string;
+  daysSinceToday: number;
+  sets: Set[];
+  bestSet: { weight: number; reps: number; volume: number };
+  totalVolume: number;
+}
+
+export interface SmartTarget {
+  hasData: boolean;
+  sessionCount: number;
+  lastSession: ExerciseHistoryEntry | null;
+  daysSinceLastSession: number | null;
+  missedLastWeek: boolean;
+  trend: 'progressing' | 'maintaining' | 'regressing' | 'unknown';
+  plateauDetected: boolean;
+  targetWeight: number | null;
+  targetReps: number | null;
+  message: string;
+  confidence: string;
+}
+
+/**
+ * Get exercise history filtered by workout type (only compare like-for-like sessions)
+ */
+export const getExerciseHistory = (
+  exerciseName: string,
+  history: WorkoutSession[],
+  workoutType: string
+): ExerciseHistoryEntry[] => {
+  const normalizedName = exerciseName.trim().toLowerCase();
+  const entries: ExerciseHistoryEntry[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Filter sessions by workout type and look back 8 weeks
+  const eightWeeksAgo = new Date(today);
+  eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+
+  for (const session of history) {
+    // Only compare same workout type
+    if (session.type !== workoutType) continue;
+
+    const sessionDate = new Date(session.date);
+    if (sessionDate < eightWeeksAgo) continue;
+
+    const exercise = session.exercises.find(
+      ex => ex.name.trim().toLowerCase() === normalizedName
+    );
+
+    if (exercise && exercise.sets.length > 0) {
+      const daysSinceToday = Math.floor(
+        (today.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      // Find best set (highest volume = weight × reps)
+      let bestSet = { weight: 0, reps: 0, volume: 0 };
+      let totalVolume = 0;
+
+      for (const set of exercise.sets) {
+        const setVolume = set.weight * set.reps;
+        totalVolume += setVolume;
+        if (setVolume > bestSet.volume) {
+          bestSet = { weight: set.weight, reps: set.reps, volume: setVolume };
+        }
+      }
+
+      entries.push({
+        date: session.date,
+        daysSinceToday,
+        sets: exercise.sets,
+        bestSet,
+        totalVolume
+      });
+    }
+  }
+
+  // Sort by date descending (most recent first)
+  return entries.sort((a, b) => a.daysSinceToday - b.daysSinceToday);
+};
+
+/**
+ * Calculate trend based on best set progression over last 4 sessions
+ */
+const calculateTrend = (
+  entries: ExerciseHistoryEntry[]
+): 'progressing' | 'maintaining' | 'regressing' | 'unknown' => {
+  if (entries.length < 2) return 'unknown';
+
+  const recent = entries.slice(0, Math.min(4, entries.length));
+  let improving = 0;
+  let declining = 0;
+
+  for (let i = 0; i < recent.length - 1; i++) {
+    const current = recent[i].bestSet.volume;
+    const previous = recent[i + 1].bestSet.volume;
+
+    if (current > previous) improving++;
+    else if (current < previous) declining++;
+  }
+
+  if (improving > declining) return 'progressing';
+  if (declining > improving) return 'regressing';
+  return 'maintaining';
+};
+
+/**
+ * Detect plateau (3+ sessions with no meaningful progress)
+ */
+const detectPlateau = (entries: ExerciseHistoryEntry[]): boolean => {
+  if (entries.length < 3) return false;
+
+  const recent = entries.slice(0, 3);
+  const volumes = recent.map(e => e.bestSet.volume);
+  const maxVolume = Math.max(...volumes);
+  const minVolume = Math.min(...volumes);
+
+  // If variance is less than 5%, consider it a plateau
+  return (maxVolume - minVolume) / maxVolume < 0.05;
+};
+
+/**
+ * Calculate Smart Target for an exercise based on history
+ */
+export const calculateSmartTarget = (
+  exerciseName: string,
+  history: WorkoutSession[],
+  workoutType: string
+): SmartTarget => {
+  const entries = getExerciseHistory(exerciseName, history, workoutType);
+  const sessionCount = entries.length;
+
+  // Base case: no data
+  if (sessionCount === 0) {
+    return {
+      hasData: false,
+      sessionCount: 0,
+      lastSession: null,
+      daysSinceLastSession: null,
+      missedLastWeek: false,
+      trend: 'unknown',
+      plateauDetected: false,
+      targetWeight: null,
+      targetReps: null,
+      message: "New exercise — find your working weight. Log today to start tracking.",
+      confidence: "No data yet"
+    };
+  }
+
+  const lastSession = entries[0];
+  const daysSinceLastSession = lastSession.daysSinceToday;
+  const missedLastWeek = daysSinceLastSession > 7;
+  const { weight: lastWeight, reps: lastReps } = lastSession.bestSet;
+
+  // 1 session: just show reference
+  if (sessionCount === 1) {
+    let message = `Last time: ${lastWeight}kg × ${lastReps} reps`;
+    if (daysSinceLastSession > 0) {
+      message += ` (${daysSinceLastSession} days ago)`;
+    }
+    if (missedLastWeek) {
+      message += ". Missed last week — ease back in if needed.";
+    } else {
+      message += ". Try to match or beat it.";
+    }
+
+    return {
+      hasData: true,
+      sessionCount: 1,
+      lastSession,
+      daysSinceLastSession,
+      missedLastWeek,
+      trend: 'unknown',
+      plateauDetected: false,
+      targetWeight: lastWeight,
+      targetReps: lastReps,
+      message,
+      confidence: "First session logged"
+    };
+  }
+
+  // 2-3 sessions: basic analysis
+  const trend = calculateTrend(entries);
+
+  if (sessionCount <= 3) {
+    let targetWeight = lastWeight;
+    let targetReps = lastReps;
+    let message = `Last: ${lastWeight}kg × ${lastReps}`;
+
+    if (missedLastWeek) {
+      message = `Missed last week. Last session: ${lastWeight}kg × ${lastReps}. Match this today.`;
+    } else if (trend === 'progressing') {
+      targetWeight = lastWeight + 2.5;
+      message = `Progressing! Try ${targetWeight}kg × ${lastReps} reps`;
+    } else {
+      message = `Target: ${targetWeight}kg × ${targetReps} reps`;
+    }
+
+    return {
+      hasData: true,
+      sessionCount,
+      lastSession,
+      daysSinceLastSession,
+      missedLastWeek,
+      trend,
+      plateauDetected: false,
+      targetWeight,
+      targetReps,
+      message,
+      confidence: "Building data..."
+    };
+  }
+
+  // 4+ sessions: full analysis
+  const plateauDetected = detectPlateau(entries);
+  let targetWeight = lastWeight;
+  let targetReps = lastReps;
+  let message = "";
+
+  if (missedLastWeek) {
+    // Came back after missed week - match last session
+    message = `Back after ${daysSinceLastSession} days. Target: match ${lastWeight}kg × ${lastReps}`;
+  } else if (plateauDetected) {
+    // Plateau detected
+    const deloadWeight = Math.round((lastWeight * 0.9) / 2.5) * 2.5;
+    message = `Plateau detected (3 sessions flat). Consider deload to ${deloadWeight}kg or try a variation.`;
+    targetWeight = deloadWeight;
+  } else if (trend === 'progressing') {
+    // Progressing - suggest increase
+    targetWeight = lastWeight + 2.5;
+    message = `Strong progress! Push for ${targetWeight}kg × ${lastReps} reps`;
+  } else if (trend === 'regressing') {
+    // Regressing - suggest drop and rebuild
+    targetWeight = Math.round((lastWeight * 0.9) / 2.5) * 2.5;
+    message = `Form check: drop to ${targetWeight}kg, focus on ${lastReps + 2} clean reps`;
+  } else {
+    // Maintaining
+    targetReps = lastReps + 1;
+    message = `Solid base. Try ${lastWeight}kg × ${targetReps} reps (+1 rep)`;
+  }
+
+  return {
+    hasData: true,
+    sessionCount,
+    lastSession,
+    daysSinceLastSession,
+    missedLastWeek,
+    trend,
+    plateauDetected,
+    targetWeight,
+    targetReps,
+    message,
+    confidence: `Based on ${sessionCount} sessions`
+  };
+};
+
+/**
+ * Get days since last session of a specific workout type
+ */
+export const getDaysSinceLastWorkoutType = (
+  history: WorkoutSession[],
+  workoutType: string
+): number | null => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (const session of history) {
+    if (session.type === workoutType) {
+      const sessionDate = new Date(session.date);
+      return Math.floor(
+        (today.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+    }
+  }
+  return null;
+};

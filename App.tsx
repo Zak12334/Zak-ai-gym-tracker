@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { WorkoutSession, DayType, Exercise, Set, UserProfile } from './types';
-import { getWorkoutForToday, generateUUID, formatDuration } from './utils';
+import { getWorkoutForToday, generateUUID, formatDuration, calculateSmartTarget, getDaysSinceLastWorkoutType } from './utils';
+import { SmartTargets } from './components/SmartTargets';
 import { DEFAULT_EXERCISES } from './constants';
 import { SessionCard } from './components/SessionCard';
 import { generateMonthlyReport } from './services/geminiService';
@@ -508,10 +509,16 @@ const App: React.FC = () => {
     );
   };
 
-  const renderExercise = (ex: Exercise) => (
+  const renderExercise = (ex: Exercise) => {
+    // Calculate smart target for this exercise
+    const smartTarget = activeSession && ex.name.trim()
+      ? calculateSmartTarget(ex.name, history, activeSession.type)
+      : null;
+
+    return (
     <div key={ex.id} className="bg-slate-950 rounded-3xl p-5 mb-4 border border-white/10 shadow-xl relative">
       <div className="flex justify-between items-start mb-4">
-        <input 
+        <input
           type="text"
           value={ex.name}
           onChange={(e) => updateExerciseName(ex.id, e.target.value)}
@@ -522,6 +529,11 @@ const App: React.FC = () => {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
+
+      {/* Smart Targets - only show if exercise has a name */}
+      {smartTarget && ex.name.trim() && (
+        <SmartTargets target={smartTarget} exerciseName={ex.name} />
+      )}
       
       <div className="space-y-3">
         {ex.sets.map((set, idx) => (
@@ -545,7 +557,8 @@ const App: React.FC = () => {
       </div>
       <button onClick={() => addSet(ex.id)} className="w-full py-4 bg-white/5 text-white/40 rounded-2xl text-xs font-black uppercase tracking-widest mt-4 border border-white/5 transition-all active:bg-white/10">+ ADD SET</button>
     </div>
-  );
+    );
+  };
 
   const renderActive = () => {
     if (!activeSession) return null;
