@@ -678,23 +678,67 @@ const App: React.FC = () => {
             </div>
           )}
           {history.length > 0 && (
-            <div className="bg-slate-950 rounded-3xl p-6 border border-white/5 h-64">
-              <h3 className="font-black italic tracking-tighter text-lg mb-4 text-white uppercase">Overall Load</h3>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={history.slice().reverse().map(s => ({
-                  date: new Date(s.date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' }),
-                  volume: s.exercises.reduce((sum, e) => sum + e.sets.reduce((ss, st) => ss + (st.weight * st.reps), 0), 0)
-                }))}>
-                  <defs>
-                    <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#111827" />
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#4b5563' }} />
-                  <YAxis hide />
-                  <Tooltip contentStyle={{ backgroundColor: '#000000', borderRadius: '12px', border: '1px solid #1e293b' }} itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }} />
-                  <Area type="monotone" dataKey="volume" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorVolume)" />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className="space-y-4">
+              <h3 className="font-black italic tracking-tighter text-lg text-white uppercase">Volume by Workout Type</h3>
+              <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest -mt-2 mb-4">Only compare same colors - different workout types have different volume ranges</p>
+              {/* Group sessions by type and show mini charts */}
+              {(() => {
+                const typeColors: Record<string, string> = {
+                  'Chest & Triceps': '#ef4444',
+                  'Back & Abs': '#3b82f6',
+                  'Biceps & Shoulders': '#22c55e',
+                  'Legs, Rear Delt & Forearms': '#a855f7'
+                };
+                const sessionsByType: Record<string, typeof history> = {};
+                history.forEach(s => {
+                  if (!sessionsByType[s.type]) sessionsByType[s.type] = [];
+                  sessionsByType[s.type].push(s);
+                });
+                return Object.entries(sessionsByType).map(([type, typeSessions]) => {
+                  const color = typeColors[type] || '#3b82f6';
+                  const chartData = typeSessions.slice().reverse().map(s => ({
+                    date: new Date(s.date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' }),
+                    volume: s.exercises.reduce((sum, e) => sum + e.sets.reduce((ss, st) => ss + (st.weight * st.reps), 0), 0)
+                  }));
+                  const latestVol = chartData.length > 0 ? chartData[chartData.length - 1].volume : 0;
+                  const prevVol = chartData.length > 1 ? chartData[chartData.length - 2].volume : latestVol;
+                  const trend = latestVol > prevVol ? '↑' : latestVol < prevVol ? '↓' : '→';
+                  const trendColor = latestVol > prevVol ? 'text-green-500' : latestVol < prevVol ? 'text-red-500' : 'text-yellow-500';
+                  return (
+                    <div key={type} className="bg-slate-950 rounded-2xl p-4 border border-white/5">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }}></div>
+                          <span className="text-sm font-black uppercase tracking-tight text-white">{type}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-lg font-black ${trendColor}`}>{trend}</span>
+                          <span className="text-sm font-bold text-slate-400">{latestVol.toLocaleString()} kg</span>
+                        </div>
+                      </div>
+                      {chartData.length > 1 ? (
+                        <div className="h-20">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartData}>
+                              <defs>
+                                <linearGradient id={`color${type.replace(/\s/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
+                                  <stop offset="95%" stopColor={color} stopOpacity={0}/>
+                                </linearGradient>
+                              </defs>
+                              <Area type="monotone" dataKey="volume" stroke={color} strokeWidth={2} fillOpacity={1} fill={`url(#color${type.replace(/\s/g, '')})`} />
+                              <XAxis dataKey="date" hide />
+                              <YAxis hide domain={['dataMin - 100', 'dataMax + 100']} />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-slate-600 italic">Need 2+ sessions to show trend</p>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           )}
         </>

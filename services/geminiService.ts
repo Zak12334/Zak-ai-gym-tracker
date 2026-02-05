@@ -6,44 +6,75 @@ import { WorkoutSession, UserProfile } from "../types";
  * Communicates with the /api/chat serverless function to protect API credentials.
  */
 export const generateMonthlyReport = async (sessions: WorkoutSession[], profile: UserProfile | null): Promise<string> => {
-  // Aggregate workout metrics for analysis
-  const workoutData = sessions.map(s => ({
-    date: s.date,
-    type: s.type,
-    exercises: s.exercises.map(e => ({
-      name: e.name,
-      bestSetWeight: Math.max(...e.sets.map(set => set.weight), 0),
-      totalVolume: e.sets.reduce((sum, set) => sum + (set.weight * set.reps), 0),
-      avgReps: e.sets.length > 0 ? e.sets.reduce((sum, set) => sum + set.reps, 0) / e.sets.length : 0
-    }))
-  }));
+  // Group sessions by workout type for like-for-like comparison
+  const sessionsByType: Record<string, any[]> = {};
+
+  sessions.forEach(s => {
+    if (!sessionsByType[s.type]) {
+      sessionsByType[s.type] = [];
+    }
+    sessionsByType[s.type].push({
+      date: s.date,
+      duration: s.duration,
+      exercises: s.exercises.map(e => ({
+        name: e.name,
+        bestSetWeight: Math.max(...e.sets.map(set => set.weight), 0),
+        totalVolume: e.sets.reduce((sum, set) => sum + (set.weight * set.reps), 0),
+        sets: e.sets.length,
+        avgReps: e.sets.length > 0 ? Math.round(e.sets.reduce((sum, set) => sum + set.reps, 0) / e.sets.length) : 0
+      })),
+      totalVolume: s.exercises.reduce((sum, e) => sum + e.sets.reduce((ss, set) => ss + (set.weight * set.reps), 0), 0)
+    });
+  });
 
   const profileContext = profile ? `User: ${profile.name}, Age: ${profile.age}, Body Weight: ${profile.weight}kg, Height: ${profile.height}ft.` : "User: Zak.";
 
   // Generate the logical prompt on the frontend to keep the backend function generic
   const message = `
-    Analyze ${profile?.name || 'Zak'}'s last ${sessions.length} gym sessions. 
+    Analyze ${profile?.name || 'Zak'}'s gym performance data.
     ${profileContext}
-    I want a highly automated, cold, and calculated assessment. 
-    
-    CRITICAL ANALYSIS:
-    1. PROGRESSION: Are the weights going up on key lifts relative to body weight?
-    2. STAGNATION: Which exercises have seen 0% growth in 2 weeks?
-    3. ROUTINE EFFICACY: Is this current split (Chest/Tri, Back/Abs, Biceps, Legs) actually working for Zak?
-    
-    Data:
-    ${JSON.stringify(workoutData)}
 
-    Structure:
-    - **Performance Mind**: (Quick summary of strength trends for Zak)
-    - **The Stalls**: (List exercises where Zak is failing to progress)
-    - **The Pivot**: (If Zak is stalling on more than 30% of his lifts, suggest a specific routine change. If he is progressing, tell him to keep the course.)
-    - **Next Target**: (The specific machine/weight Zak needs to beat next week)
+    CRITICAL RULE: Only compare sessions of the SAME workout type. Never compare Back & Abs volume to Biceps & Shoulders - they are completely different muscle groups with different volume capacities.
 
-    Keep it short, direct, and automated. Use Zak's name. No encouragement, just logic.
+    Data is grouped by workout type:
+    ${JSON.stringify(sessionsByType, null, 2)}
+
+    For EACH workout type that has 2+ sessions, analyze:
+    1. Is volume/weight trending up, down, or flat compared to PREVIOUS sessions of the SAME type?
+    2. Which specific exercises are progressing vs stalling?
+    3. Any exercises with 0 progress across multiple sessions of that type?
+
+    Structure your response:
+
+    **CHEST & TRICEPS** (if data exists)
+    - Trend: [↑ Progressing / → Maintaining / ↓ Regressing]
+    - Key lifts: [status of main exercises]
+    - Action: [specific recommendation]
+
+    **BACK & ABS** (if data exists)
+    - Trend: [↑ Progressing / → Maintaining / ↓ Regressing]
+    - Key lifts: [status of main exercises]
+    - Action: [specific recommendation]
+
+    **BICEPS & SHOULDERS** (if data exists)
+    - Trend: [↑ Progressing / → Maintaining / ↓ Regressing]
+    - Key lifts: [status of main exercises]
+    - Action: [specific recommendation]
+
+    **LEGS, REAR DELT & FOREARMS** (if data exists)
+    - Trend: [↑ Progressing / → Maintaining / ↓ Regressing]
+    - Key lifts: [status of main exercises]
+    - Action: [specific recommendation]
+
+    **OVERALL ASSESSMENT**
+    - Summary of ${profile?.name || 'Zak'}'s progress across all workout types
+    - Any workout types that need attention
+    - Next priority target
+
+    Keep it data-driven and direct. Use ${profile?.name || 'Zak'}'s name. No fluff.
   `;
 
-  const systemInstruction = `You are the IronMind AI, Zak's personal strength logic engine. You analyze Zak's patterns to maximize efficiency. If progress stops, you suggest radical shifts in training style. You speak directly to Zak in a data-driven, cold tone.`;
+  const systemInstruction = `You are the IronMind AI, ${profile?.name || 'Zak'}'s personal strength logic engine. You analyze patterns to maximize efficiency. CRITICAL: Never compare different workout types against each other - Back days have higher volume than Biceps days by nature. Only compare same-type sessions. Speak directly in a data-driven tone.`;
 
   try {
     // Call the local secure proxy instead of a direct external API
