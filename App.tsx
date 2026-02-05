@@ -138,7 +138,8 @@ const App: React.FC = () => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ "Back": false, "Abs": false });
   const [isLoading, setIsLoading] = useState(true);
-  
+  const [isSaving, setIsSaving] = useState(false);
+
   const [preferredMachines, setPreferredMachines] = useState<Record<string, string[]>>({});
   const [editingSession, setEditingSession] = useState<WorkoutSession | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -381,8 +382,10 @@ const App: React.FC = () => {
   };
 
   const finishSession = async () => {
-    if (!activeSession || !profile) return;
-    
+    if (!activeSession || !profile || isSaving) return;
+
+    setIsSaving(true);
+
     const completedSession: any = {
       profile_id: profile.id,
       date: activeSession.date,
@@ -398,10 +401,11 @@ const App: React.FC = () => {
       .insert([completedSession])
       .select()
       .single();
-    
+
     if (error) {
       console.error("Error saving session:", error);
       alert("Failed to save session. Check connection.");
+      setIsSaving(false);
     } else {
       setHistory(prev => [data, ...prev]);
       // Update preferred machines cache
@@ -412,6 +416,7 @@ const App: React.FC = () => {
       setActiveSession(null);
       persistActiveSession(null);
       setTimer(0);
+      setIsSaving(false);
       setView('Home');
     }
   };
@@ -588,7 +593,7 @@ const App: React.FC = () => {
             <h2 className="text-3xl font-black italic tracking-tighter text-white uppercase">{activeSession.type}</h2>
             <p className="text-blue-500 font-black text-2xl tracking-tight">{formatDuration(timer)}</p>
           </div>
-          <button onClick={finishSession} className="bg-white text-black px-8 py-3 rounded-2xl font-black uppercase tracking-tighter active:scale-95 transition-transform">FINISH</button>
+          <button onClick={finishSession} disabled={isSaving} className="bg-white text-black px-8 py-3 rounded-2xl font-black uppercase tracking-tighter active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">{isSaving ? 'SAVING...' : 'FINISH'}</button>
         </div>
 
         {!isBackAbsDay && (
