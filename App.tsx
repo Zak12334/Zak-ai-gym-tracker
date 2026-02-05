@@ -136,7 +136,7 @@ const App: React.FC = () => {
   const [timer, setTimer] = useState(0);
   const [aiReport, setAiReport] = useState<string | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ "Back": false, "Abs": false });
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -580,11 +580,83 @@ const App: React.FC = () => {
 
   const renderActive = () => {
     if (!activeSession) return null;
-    const isBackAbsDay = activeSession.type === DayType.BackAbs;
-    
-    const backEx = activeSession.exercises.filter(e => e.name.toLowerCase().includes('back:'));
-    const absEx = activeSession.exercises.filter(e => e.name.toLowerCase().includes('abs:'));
-    const otherEx = activeSession.exercises.filter(e => !e.name.toLowerCase().includes('back:') && !e.name.toLowerCase().includes('abs:'));
+
+    // Define muscle group sections for each workout type
+    const workoutSections: Record<string, { name: string; prefix: string; color: string }[]> = {
+      [DayType.ChestTriceps]: [
+        { name: 'Chest', prefix: 'chest:', color: '#ef4444' },
+        { name: 'Triceps', prefix: 'triceps:', color: '#f97316' }
+      ],
+      [DayType.BackAbs]: [
+        { name: 'Back', prefix: 'back:', color: '#3b82f6' },
+        { name: 'Abs', prefix: 'abs:', color: '#06b6d4' }
+      ],
+      [DayType.BicepsShoulders]: [
+        { name: 'Biceps', prefix: 'biceps:', color: '#22c55e' },
+        { name: 'Shoulders', prefix: 'shoulders:', color: '#84cc16' }
+      ],
+      [DayType.LegsRearDeltForearms]: [
+        { name: 'Legs', prefix: 'legs:', color: '#a855f7' },
+        { name: 'Rear Delt', prefix: 'rear delt:', color: '#d946ef' },
+        { name: 'Forearms', prefix: 'forearms:', color: '#ec4899' }
+      ]
+    };
+
+    const sections = workoutSections[activeSession.type] || [];
+    const hasSections = sections.length > 0;
+
+    // Helper to filter exercises by prefix
+    const getExercisesForSection = (prefix: string) => {
+      return activeSession.exercises.filter(e => e.name.toLowerCase().startsWith(prefix));
+    };
+
+    // Get exercises that don't match any section prefix
+    const getOtherExercises = () => {
+      if (!hasSections) return activeSession.exercises;
+      const allPrefixes = sections.map(s => s.prefix);
+      return activeSession.exercises.filter(e =>
+        !allPrefixes.some(prefix => e.name.toLowerCase().startsWith(prefix))
+      );
+    };
+
+    const renderSection = (section: { name: string; prefix: string; color: string }) => {
+      const sectionExercises = getExercisesForSection(section.prefix);
+      const isExpanded = expandedSections[section.name] ?? false;
+
+      return (
+        <div key={section.name} className="border border-white/10 rounded-[2.5rem] overflow-hidden bg-slate-900/20 backdrop-blur-md">
+          <button
+            onClick={() => setExpandedSections(p => ({ ...p, [section.name]: !p[section.name] }))}
+            className="w-full p-6 flex justify-between items-center transition-colors hover:bg-white/5 active:bg-white/10"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: section.color }}></div>
+              <span className="text-xl font-black italic tracking-tighter uppercase text-white">{section.name}</span>
+              <span className="text-xs font-bold text-slate-600">({sectionExercises.length})</span>
+            </div>
+            <svg className={`w-6 h-6 text-slate-500 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {isExpanded && (
+            <div className="p-5 bg-black/40 space-y-4 border-t border-white/10">
+              <button
+                onClick={() => addExercise(section.name)}
+                className="w-full py-4 border border-dashed border-white/10 text-slate-500 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:text-blue-400 transition-colors"
+              >
+                + Add {section.name} Exercise
+              </button>
+              {sectionExercises.map(renderExercise)}
+              {sectionExercises.length === 0 && (
+                <p className="text-slate-700 text-sm italic text-center py-4">No {section.name.toLowerCase()} exercises yet</p>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const otherExercises = getOtherExercises();
 
     return (
       <div className="p-6 pb-48 animate-in slide-in-from-bottom-10 duration-500">
@@ -596,47 +668,21 @@ const App: React.FC = () => {
           <button onClick={finishSession} disabled={isSaving} className="bg-white text-black px-8 py-3 rounded-2xl font-black uppercase tracking-tighter active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">{isSaving ? 'SAVING...' : 'FINISH'}</button>
         </div>
 
-        {!isBackAbsDay && (
-          <button onClick={() => addExercise()} className="w-full py-5 border-2 border-dashed border-white/10 text-slate-600 rounded-3xl font-black uppercase tracking-widest text-xs mb-8 hover:border-blue-500 hover:text-blue-500 transition-colors">+ Add Machine</button>
-        )}
-
-        {isBackAbsDay ? (
-          <div className="space-y-6">
-            <div className="border border-white/10 rounded-[2.5rem] overflow-hidden bg-slate-900/20 backdrop-blur-md">
-              <button onClick={() => setExpandedSections(p => ({ ...p, Back: !p.Back }))} className="w-full p-6 flex justify-between items-center transition-colors hover:bg-white/5 active:bg-white/10">
-                <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                    <span className="text-xl font-black italic tracking-tighter uppercase text-white">Back</span>
-                </div>
-                <svg className={`w-6 h-6 text-slate-500 transition-transform duration-300 ${expandedSections['Back'] ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
-              </button>
-              {expandedSections['Back'] && (
-                <div className="p-5 bg-black/40 space-y-4 border-t border-white/10">
-                  <button onClick={() => addExercise("Back")} className="w-full py-4 border border-dashed border-white/10 text-slate-500 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:text-blue-400 transition-colors">+ Add Back Machine</button>
-                  {backEx.map(renderExercise)}
-                </div>
-              )}
-            </div>
-
-            <div className="border border-white/10 rounded-[2.5rem] overflow-hidden bg-slate-900/20 backdrop-blur-md">
-              <button onClick={() => setExpandedSections(p => ({ ...p, Abs: !p.Abs }))} className="w-full p-6 flex justify-between items-center transition-colors hover:bg-white/5 active:bg-white/10">
-                <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                    <span className="text-xl font-black italic tracking-tighter uppercase text-white">Abs</span>
-                </div>
-                <svg className={`w-6 h-6 text-slate-500 transition-transform duration-300 ${expandedSections['Abs'] ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
-              </button>
-              {expandedSections['Abs'] && (
-                <div className="p-5 bg-black/40 space-y-4 border-t border-white/10">
-                  <button onClick={() => addExercise("Abs")} className="w-full py-4 border border-dashed border-white/10 text-slate-500 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:text-blue-400 transition-colors">+ Add Abs Machine</button>
-                  {absEx.map(renderExercise)}
-                </div>
-              )}
-            </div>
-            {otherEx.map(renderExercise)}
+        {hasSections ? (
+          <div className="space-y-4">
+            {sections.map(renderSection)}
+            {otherExercises.length > 0 && (
+              <div className="mt-6">
+                <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest mb-4">Other Exercises</p>
+                {otherExercises.map(renderExercise)}
+              </div>
+            )}
           </div>
         ) : (
-          activeSession.exercises.map(renderExercise)
+          <>
+            <button onClick={() => addExercise()} className="w-full py-5 border-2 border-dashed border-white/10 text-slate-600 rounded-3xl font-black uppercase tracking-widest text-xs mb-8 hover:border-blue-500 hover:text-blue-500 transition-colors">+ Add Machine</button>
+            {activeSession.exercises.map(renderExercise)}
+          </>
         )}
 
         <div className="mt-16 text-center pb-20">

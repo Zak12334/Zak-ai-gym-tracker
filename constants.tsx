@@ -13,34 +13,34 @@ export const WEEKLY_SCHEDULE: Record<number, DayType> = {
 
 export const DEFAULT_EXERCISES: Record<DayType, string[]> = {
   [DayType.ChestTriceps]: [
-    "Chest Press", 
-    "Incline Press", 
-    "Dips",
-    "Cable Tricep Pushdowns", 
-    "Rope Extensions"
+    "Chest: Chest Press",
+    "Chest: Incline Press",
+    "Chest: Dips",
+    "Triceps: Cable Pushdowns",
+    "Triceps: Rope Extensions"
   ],
   [DayType.BackAbs]: [
     "Back: Deadlifts",
     "Back: Lat Pulldowns",
-    "Back: High Row", 
+    "Back: High Row",
     "Back: ISO-Lateral Row",
     "Abs: Machine Crunches",
     "Abs: Hanging Leg Raises"
   ],
   [DayType.BicepsShoulders]: [
-    "EZ Bar Curls",
-    "Hammer Curls",
-    "Preacher Machine Curls",
-    "Cable Bicep Curls",
-    "Shoulder Press",
-    "Lateral Raises"
+    "Biceps: EZ Bar Curls",
+    "Biceps: Hammer Curls",
+    "Biceps: Preacher Machine Curls",
+    "Biceps: Cable Curls",
+    "Shoulders: Shoulder Press",
+    "Shoulders: Lateral Raises"
   ],
   [DayType.LegsRearDeltForearms]: [
-    "Leg Press", 
-    "Leg Extensions", 
-    "Lying Leg Curls", 
-    "Rear Delt Fly", 
-    "Dumbbell Forearm Curls"
+    "Legs: Leg Press",
+    "Legs: Leg Extensions",
+    "Legs: Lying Leg Curls",
+    "Rear Delt: Rear Delt Fly",
+    "Forearms: Dumbbell Curls"
   ],
   [DayType.Rest]: []
 };
