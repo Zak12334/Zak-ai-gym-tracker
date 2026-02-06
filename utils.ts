@@ -28,7 +28,7 @@ export const getLastPerformanceForExercise = (history: WorkoutSession[], exercis
   return null;
 };
 
-export const generateUUID = () => Math.random().toString(36).substr(2, 9);
+export const generateUUID = () => crypto.randomUUID();
 
 // Smart Targets - Exercise History Analysis
 
