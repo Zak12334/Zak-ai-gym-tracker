@@ -254,7 +254,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
       {/* Quick Add Modal */}
       {showQuickAdd && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-end animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-black/80 z-[60] flex items-end animate-in fade-in duration-200">
           <div className="w-full bg-slate-900 rounded-t-3xl p-6 animate-in slide-in-from-bottom duration-300">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-black uppercase">Quick Add</h3>
