@@ -1022,7 +1022,7 @@ const App: React.FC = () => {
           <span className="text-[10px] font-bold opacity-70">TAP TO RESUME</span>
         </button>
       )}
-      {view !== 'EditSession' && view !== 'Nutrition' && (
+      {view !== 'EditSession' && (
         <nav className="fixed bottom-6 left-6 right-6 max-w-md mx-auto bg-slate-950/90 ios-blur border border-white/5 h-20 rounded-[40px] safe-bottom flex items-center justify-around z-50 px-4 shadow-2xl">
           <button onClick={() => setView('Home')} className={`p-4 rounded-full transition-all ${view === 'Home' ? 'text-blue-500 scale-110' : 'text-slate-700'}`}><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></button>
           <button onClick={() => setView('Nutrition')} className={`p-4 rounded-full transition-all ${view === 'Nutrition' ? 'text-orange-500 scale-110' : 'text-slate-700'}`}><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18.06 22.99h1.66c.84 0 1.53-.64 1.63-1.46L23 5.05l-5 2.05L14.5 4 11 5.81 7.5 3 3.99 5.05l1.64 16.48c.1.82.79 1.46 1.63 1.46h1.66c.83 0 1.52-.63 1.63-1.45L11 16.5v-3.69c0-.38.31-.69.69-.69h.62c.38 0 .69.31.69.69v3.69l.45 5.04c.11.82.8 1.45 1.63 1.45zM12 9c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/></svg></button>
