@@ -35,6 +35,15 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Manual entry states
+  const [isManualMode, setIsManualMode] = useState(false);
+  const [manualName, setManualName] = useState('');
+  const [manualCalories, setManualCalories] = useState('');
+  const [manualProtein, setManualProtein] = useState('');
+  const [manualCarbs, setManualCarbs] = useState('');
+  const [manualFat, setManualFat] = useState('');
+  const [manualGrams, setManualGrams] = useState('100');
+
   // Calculate daily totals
   const today = new Date().toISOString().split('T')[0];
   const todayFoods = foods.filter(f => f.date === today);
@@ -125,6 +134,49 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       amount
     };
     onAddWater(newWater);
+  };
+
+  // Handle manual food entry
+  const handleManualEntry = () => {
+    if (!manualName.trim()) return;
+
+    const newFood: FoodLog = {
+      id: generateUUID(),
+      date: today,
+      timestamp: Date.now(),
+      name: manualName.trim(),
+      calories: parseInt(manualCalories) || 0,
+      protein: parseFloat(manualProtein) || 0,
+      carbs: parseFloat(manualCarbs) || 0,
+      fat: parseFloat(manualFat) || 0,
+      grams: parseInt(manualGrams) || 0,
+      source: 'manual'
+    };
+    onAddFood(newFood);
+
+    // Reset manual entry form
+    setManualName('');
+    setManualCalories('');
+    setManualProtein('');
+    setManualCarbs('');
+    setManualFat('');
+    setManualGrams('100');
+    setIsManualMode(false);
+    setShowQuickAdd(false);
+  };
+
+  const resetQuickAdd = () => {
+    setShowQuickAdd(false);
+    setSelectedFood(null);
+    setSearchResults([]);
+    setQuickAddInput('');
+    setIsManualMode(false);
+    setManualName('');
+    setManualCalories('');
+    setManualProtein('');
+    setManualCarbs('');
+    setManualFat('');
+    setManualGrams('100');
   };
 
   return (
@@ -255,15 +307,115 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       {/* Quick Add Modal */}
       {showQuickAdd && (
         <div className="fixed inset-0 bg-black/80 z-[60] flex items-end animate-in fade-in duration-200">
-          <div className="w-full bg-slate-900 rounded-t-3xl p-6 animate-in slide-in-from-bottom duration-300">
+          <div className="w-full max-h-[85vh] bg-slate-900 rounded-t-3xl p-6 animate-in slide-in-from-bottom duration-300 overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-black uppercase">Quick Add</h3>
-              <button onClick={() => { setShowQuickAdd(false); setSelectedFood(null); setSearchResults([]); }} className="text-slate-500 p-2">
+              <h3 className="text-xl font-black uppercase">{isManualMode ? 'Manual Entry' : 'Quick Add'}</h3>
+              <button onClick={resetQuickAdd} className="text-slate-500 p-2">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
-            {!selectedFood ? (
+            {/* Mode Toggle */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setIsManualMode(false)}
+                className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${!isManualMode ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
+              >
+                Search Food
+              </button>
+              <button
+                onClick={() => setIsManualMode(true)}
+                className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${isManualMode ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
+              >
+                Enter Values
+              </button>
+            </div>
+
+            {isManualMode ? (
+              /* Manual Entry Mode */
+              <>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-3">Enter your own values from the label</p>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Food Name</label>
+                    <input
+                      type="text"
+                      value={manualName}
+                      onChange={(e) => setManualName(e.target.value)}
+                      placeholder="e.g., Tuna can"
+                      className="w-full bg-slate-800 border border-white/10 rounded-xl p-3 text-white font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500 mt-1"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Calories</label>
+                      <input
+                        type="number"
+                        value={manualCalories}
+                        onChange={(e) => setManualCalories(e.target.value)}
+                        placeholder="0"
+                        className="w-full bg-slate-800 border border-white/10 rounded-xl p-3 text-orange-400 font-black text-lg placeholder-slate-700 focus:outline-none focus:border-orange-500 mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Protein (g)</label>
+                      <input
+                        type="number"
+                        value={manualProtein}
+                        onChange={(e) => setManualProtein(e.target.value)}
+                        placeholder="0"
+                        className="w-full bg-slate-800 border border-white/10 rounded-xl p-3 text-blue-400 font-black text-lg placeholder-slate-700 focus:outline-none focus:border-blue-500 mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Carbs (g)</label>
+                      <input
+                        type="number"
+                        value={manualCarbs}
+                        onChange={(e) => setManualCarbs(e.target.value)}
+                        placeholder="0"
+                        className="w-full bg-slate-800 border border-white/10 rounded-xl p-3 text-green-400 font-black text-lg placeholder-slate-700 focus:outline-none focus:border-green-500 mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Fat (g)</label>
+                      <input
+                        type="number"
+                        value={manualFat}
+                        onChange={(e) => setManualFat(e.target.value)}
+                        placeholder="0"
+                        className="w-full bg-slate-800 border border-white/10 rounded-xl p-3 text-yellow-400 font-black text-lg placeholder-slate-700 focus:outline-none focus:border-yellow-500 mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Portion Size (g) - optional</label>
+                    <input
+                      type="number"
+                      value={manualGrams}
+                      onChange={(e) => setManualGrams(e.target.value)}
+                      placeholder="100"
+                      className="w-full bg-slate-800 border border-white/10 rounded-xl p-3 text-white font-bold placeholder-slate-700 focus:outline-none focus:border-blue-500 mt-1"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleManualEntry}
+                  disabled={!manualName.trim()}
+                  className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-wider disabled:opacity-30 active:scale-95 transition-transform mt-4"
+                >
+                  Add Food
+                </button>
+              </>
+            ) : !selectedFood ? (
+              /* Search Mode */
               <>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-3">Type food with amount (e.g., "250g chicken" or "2 eggs")</p>
                 <input
