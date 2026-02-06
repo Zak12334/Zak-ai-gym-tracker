@@ -169,42 +169,85 @@ const App: React.FC = () => {
     }
   };
 
-  // Nutrition persistence helpers
-  const persistNutrition = (foods: FoodLog[], water: WaterLog[]) => {
-    localStorage.setItem('foodLogs', JSON.stringify(foods));
-    localStorage.setItem('waterLogs', JSON.stringify(water));
+  // Nutrition persistence - saves to Supabase
+  const addFoodLog = async (food: FoodLog) => {
+    if (!profile) return;
+
+    // Optimistic update
+    setFoodLogs(prev => [food, ...prev]);
+
+    const { error } = await supabase
+      .from('food_logs')
+      .insert([{
+        id: food.id,
+        profile_id: profile.id,
+        date: food.date,
+        timestamp: food.timestamp,
+        name: food.name,
+        calories: food.calories,
+        protein: food.protein,
+        carbs: food.carbs,
+        fat: food.fat,
+        grams: food.grams,
+        source: food.source
+      }]);
+
+    if (error) {
+      console.error("Error saving food log:", error);
+      // Revert on error
+      setFoodLogs(prev => prev.filter(f => f.id !== food.id));
+    }
   };
 
-  const addFoodLog = (food: FoodLog) => {
-    setFoodLogs(prev => {
-      const updated = [food, ...prev];
-      persistNutrition(updated, waterLogs);
-      return updated;
-    });
+  const deleteFoodLog = async (id: string) => {
+    // Optimistic update
+    setFoodLogs(prev => prev.filter(f => f.id !== id));
+
+    const { error } = await supabase
+      .from('food_logs')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error("Error deleting food log:", error);
+    }
   };
 
-  const deleteFoodLog = (id: string) => {
-    setFoodLogs(prev => {
-      const updated = prev.filter(f => f.id !== id);
-      persistNutrition(updated, waterLogs);
-      return updated;
-    });
+  const addWaterLog = async (water: WaterLog) => {
+    if (!profile) return;
+
+    // Optimistic update
+    setWaterLogs(prev => [water, ...prev]);
+
+    const { error } = await supabase
+      .from('water_logs')
+      .insert([{
+        id: water.id,
+        profile_id: profile.id,
+        date: water.date,
+        timestamp: water.timestamp,
+        amount: water.amount
+      }]);
+
+    if (error) {
+      console.error("Error saving water log:", error);
+      // Revert on error
+      setWaterLogs(prev => prev.filter(w => w.id !== water.id));
+    }
   };
 
-  const addWaterLog = (water: WaterLog) => {
-    setWaterLogs(prev => {
-      const updated = [water, ...prev];
-      persistNutrition(foodLogs, updated);
-      return updated;
-    });
-  };
+  const deleteWaterLog = async (id: string) => {
+    // Optimistic update
+    setWaterLogs(prev => prev.filter(w => w.id !== id));
 
-  const deleteWaterLog = (id: string) => {
-    setWaterLogs(prev => {
-      const updated = prev.filter(w => w.id !== id);
-      persistNutrition(foodLogs, updated);
-      return updated;
-    });
+    const { error } = await supabase
+      .from('water_logs')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error("Error deleting water log:", error);
+    }
   };
 
   const handleScanBarcode = () => {
@@ -245,24 +288,6 @@ const App: React.FC = () => {
         }
       }
 
-      // Restore nutrition logs from localStorage
-      const savedFoods = localStorage.getItem('foodLogs');
-      const savedWater = localStorage.getItem('waterLogs');
-      if (savedFoods) {
-        try {
-          setFoodLogs(JSON.parse(savedFoods));
-        } catch (e) {
-          console.error("Failed to restore food logs:", e);
-        }
-      }
-      if (savedWater) {
-        try {
-          setWaterLogs(JSON.parse(savedWater));
-        } catch (e) {
-          console.error("Failed to restore water logs:", e);
-        }
-      }
-
       // Load Profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -289,6 +314,44 @@ const App: React.FC = () => {
             }
           });
           setPreferredMachines(machines);
+        }
+
+        // Load Food Logs from Supabase
+        const { data: foodData, error: foodError } = await supabase
+          .from('food_logs')
+          .select('*')
+          .eq('profile_id', profileData.id)
+          .order('timestamp', { ascending: false });
+
+        if (foodData) {
+          setFoodLogs(foodData.map((f: any) => ({
+            id: f.id,
+            date: f.date,
+            timestamp: f.timestamp,
+            name: f.name,
+            calories: f.calories,
+            protein: f.protein,
+            carbs: f.carbs,
+            fat: f.fat,
+            grams: f.grams,
+            source: f.source
+          })));
+        }
+
+        // Load Water Logs from Supabase
+        const { data: waterData, error: waterError } = await supabase
+          .from('water_logs')
+          .select('*')
+          .eq('profile_id', profileData.id)
+          .order('timestamp', { ascending: false });
+
+        if (waterData) {
+          setWaterLogs(waterData.map((w: any) => ({
+            id: w.id,
+            date: w.date,
+            timestamp: w.timestamp,
+            amount: w.amount
+          })));
         }
       }
       setIsLoading(false);
