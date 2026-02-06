@@ -44,3 +44,43 @@ export interface ProgressionReport {
   recommendations: string[];
   volumeTrend: { date: string; volume: number }[];
 }
+
+// Nutrition tracking types
+export interface FoodLog {
+  id: string;
+  date: string; // ISO date string (YYYY-MM-DD)
+  timestamp: number;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  grams: number;
+  source: 'manual' | 'barcode' | 'ai';
+}
+
+export interface WaterLog {
+  id: string;
+  date: string; // ISO date string (YYYY-MM-DD)
+  timestamp: number;
+  amount: number; // ml
+}
+
+export interface DailyNutrition {
+  date: string;
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFat: number;
+  totalWater: number; // ml
+  foods: FoodLog[];
+  waterLogs: WaterLog[];
+}
+
+export interface NutritionGoals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  water: number; // ml
+}

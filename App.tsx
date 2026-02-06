@@ -1,15 +1,18 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { WorkoutSession, DayType, Exercise, Set, UserProfile } from './types';
+import { WorkoutSession, DayType, Exercise, Set, UserProfile, FoodLog, WaterLog, NutritionGoals } from './types';
 import { getWorkoutForToday, generateUUID, formatDuration, calculateSmartTarget, getDaysSinceLastWorkoutType } from './utils';
 import { SmartTargets } from './components/SmartTargets';
+import { NutritionView } from './components/NutritionView';
+import { BarcodeScanner } from './components/BarcodeScanner';
+import { PhotoEstimator } from './components/PhotoEstimator';
 import { DEFAULT_EXERCISES } from './constants';
 import { SessionCard } from './components/SessionCard';
 import { generateMonthlyReport } from './services/geminiService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import supabase from './supabaseClient';
 
-type View = 'Home' | 'Active' | 'History' | 'Report' | 'EditSession';
+type View = 'Home' | 'Active' | 'History' | 'Report' | 'EditSession' | 'Nutrition';
 
 const Onboarding: React.FC<{ onComplete: (profile: any) => void }> = ({ onComplete }) => {
   const [name, setName] = useState('');
@@ -144,6 +147,19 @@ const App: React.FC = () => {
   const [editingSession, setEditingSession] = useState<WorkoutSession | null>(null);
   const timerRef = useRef<number | null>(null);
 
+  // Nutrition tracking state
+  const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
+  const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
+  const [nutritionGoals] = useState<NutritionGoals>({
+    calories: 2500,
+    protein: 180,
+    carbs: 250,
+    fat: 80,
+    water: 3000 // 3 liters
+  });
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [showPhotoEstimator, setShowPhotoEstimator] = useState(false);
+
   // Helper to persist active session to localStorage
   const persistActiveSession = (session: WorkoutSession | null) => {
     if (session) {
@@ -151,6 +167,62 @@ const App: React.FC = () => {
     } else {
       localStorage.removeItem('activeSession');
     }
+  };
+
+  // Nutrition persistence helpers
+  const persistNutrition = (foods: FoodLog[], water: WaterLog[]) => {
+    localStorage.setItem('foodLogs', JSON.stringify(foods));
+    localStorage.setItem('waterLogs', JSON.stringify(water));
+  };
+
+  const addFoodLog = (food: FoodLog) => {
+    setFoodLogs(prev => {
+      const updated = [food, ...prev];
+      persistNutrition(updated, waterLogs);
+      return updated;
+    });
+  };
+
+  const deleteFoodLog = (id: string) => {
+    setFoodLogs(prev => {
+      const updated = prev.filter(f => f.id !== id);
+      persistNutrition(updated, waterLogs);
+      return updated;
+    });
+  };
+
+  const addWaterLog = (water: WaterLog) => {
+    setWaterLogs(prev => {
+      const updated = [water, ...prev];
+      persistNutrition(foodLogs, updated);
+      return updated;
+    });
+  };
+
+  const deleteWaterLog = (id: string) => {
+    setWaterLogs(prev => {
+      const updated = prev.filter(w => w.id !== id);
+      persistNutrition(foodLogs, updated);
+      return updated;
+    });
+  };
+
+  const handleScanBarcode = () => {
+    setShowBarcodeScanner(true);
+  };
+
+  const handleBarcodeFood = (food: FoodLog) => {
+    addFoodLog(food);
+    setShowBarcodeScanner(false);
+  };
+
+  const handlePhotoEstimate = () => {
+    setShowPhotoEstimator(true);
+  };
+
+  const handlePhotoFoods = (foods: FoodLog[]) => {
+    foods.forEach(food => addFoodLog(food));
+    setShowPhotoEstimator(false);
   };
 
   useEffect(() => {
@@ -170,6 +242,24 @@ const App: React.FC = () => {
         } catch (e) {
           console.error("Failed to restore session:", e);
           localStorage.removeItem('activeSession');
+        }
+      }
+
+      // Restore nutrition logs from localStorage
+      const savedFoods = localStorage.getItem('foodLogs');
+      const savedWater = localStorage.getItem('waterLogs');
+      if (savedFoods) {
+        try {
+          setFoodLogs(JSON.parse(savedFoods));
+        } catch (e) {
+          console.error("Failed to restore food logs:", e);
+        }
+      }
+      if (savedWater) {
+        try {
+          setWaterLogs(JSON.parse(savedWater));
+        } catch (e) {
+          console.error("Failed to restore water logs:", e);
         }
       }
 
@@ -895,6 +985,32 @@ const App: React.FC = () => {
       {view === 'History' && renderHistory()}
       {view === 'Report' && renderReport()}
       {view === 'EditSession' && renderEditSession()}
+      {view === 'Nutrition' && (
+        <NutritionView
+          foods={foodLogs}
+          waterLogs={waterLogs}
+          goals={nutritionGoals}
+          onAddFood={addFoodLog}
+          onAddWater={addWaterLog}
+          onDeleteFood={deleteFoodLog}
+          onDeleteWater={deleteWaterLog}
+          onBack={() => setView('Home')}
+          onScanBarcode={handleScanBarcode}
+          onPhotoEstimate={handlePhotoEstimate}
+        />
+      )}
+      {showBarcodeScanner && (
+        <BarcodeScanner
+          onFoodFound={handleBarcodeFood}
+          onClose={() => setShowBarcodeScanner(false)}
+        />
+      )}
+      {showPhotoEstimator && (
+        <PhotoEstimator
+          onFoodsFound={handlePhotoFoods}
+          onClose={() => setShowPhotoEstimator(false)}
+        />
+      )}
       {/* Floating session indicator when active session exists but not on Active view */}
       {activeSession && view !== 'Active' && view !== 'EditSession' && (
         <button
@@ -906,9 +1022,10 @@ const App: React.FC = () => {
           <span className="text-[10px] font-bold opacity-70">TAP TO RESUME</span>
         </button>
       )}
-      {view !== 'EditSession' && (
+      {view !== 'EditSession' && view !== 'Nutrition' && (
         <nav className="fixed bottom-6 left-6 right-6 max-w-md mx-auto bg-slate-950/90 ios-blur border border-white/5 h-20 rounded-[40px] safe-bottom flex items-center justify-around z-50 px-4 shadow-2xl">
           <button onClick={() => setView('Home')} className={`p-4 rounded-full transition-all ${view === 'Home' ? 'text-blue-500 scale-110' : 'text-slate-700'}`}><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></button>
+          <button onClick={() => setView('Nutrition')} className={`p-4 rounded-full transition-all ${view === 'Nutrition' ? 'text-orange-500 scale-110' : 'text-slate-700'}`}><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18.06 22.99h1.66c.84 0 1.53-.64 1.63-1.46L23 5.05l-5 2.05L14.5 4 11 5.81 7.5 3 3.99 5.05l1.64 16.48c.1.82.79 1.46 1.63 1.46h1.66c.83 0 1.52-.63 1.63-1.45L11 16.5v-3.69c0-.38.31-.69.69-.69h.62c.38 0 .69.31.69.69v3.69l.45 5.04c.11.82.8 1.45 1.63 1.45zM12 9c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/></svg></button>
           <button onClick={() => setView('History')} className={`p-4 rounded-full transition-all ${view === 'History' ? 'text-blue-500 scale-110' : 'text-slate-700'}`}><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg></button>
           <button onClick={() => setView('Report')} className={`p-4 rounded-full transition-all ${view === 'Report' ? 'text-blue-500 scale-110' : 'text-slate-700'}`}><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></button>
           {activeSession && <button onClick={() => setView('Active')} className={`p-4 rounded-full transition-all ${view === 'Active' ? 'text-blue-500 scale-110' : 'text-green-500'}`}><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z"/></svg></button>}
