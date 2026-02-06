@@ -661,9 +661,14 @@ const App: React.FC = () => {
     return (
       <div className="p-6 pb-48 animate-in slide-in-from-bottom-10 duration-500">
         <div className="flex justify-between items-start mb-8 sticky top-0 bg-black/80 ios-blur py-4 z-20 -mx-6 px-6">
-          <div>
-            <h2 className="text-3xl font-black italic tracking-tighter text-white uppercase">{activeSession.type}</h2>
-            <p className="text-blue-500 font-black text-2xl tracking-tight">{formatDuration(timer)}</p>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setView('Home')} className="text-white bg-slate-900 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 active:bg-slate-800 flex-shrink-0">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div>
+              <h2 className="text-2xl font-black italic tracking-tighter text-white uppercase">{activeSession.type}</h2>
+              <p className="text-blue-500 font-black text-xl tracking-tight">{formatDuration(timer)}</p>
+            </div>
           </div>
           <button onClick={finishSession} disabled={isSaving} className="bg-white text-black px-8 py-3 rounded-2xl font-black uppercase tracking-tighter active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">{isSaving ? 'SAVING...' : 'FINISH'}</button>
         </div>
@@ -890,11 +895,23 @@ const App: React.FC = () => {
       {view === 'History' && renderHistory()}
       {view === 'Report' && renderReport()}
       {view === 'EditSession' && renderEditSession()}
-      {view !== 'Active' && view !== 'EditSession' && (
+      {/* Floating session indicator when active session exists but not on Active view */}
+      {activeSession && view !== 'Active' && view !== 'EditSession' && (
+        <button
+          onClick={() => setView('Active')}
+          className="fixed top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full flex items-center gap-2 z-50 shadow-xl border border-blue-500/50 animate-pulse"
+        >
+          <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
+          <span className="text-xs font-black uppercase tracking-wider">{formatDuration(timer)}</span>
+          <span className="text-[10px] font-bold opacity-70">TAP TO RESUME</span>
+        </button>
+      )}
+      {view !== 'EditSession' && (
         <nav className="fixed bottom-6 left-6 right-6 max-w-md mx-auto bg-slate-950/90 ios-blur border border-white/5 h-20 rounded-[40px] safe-bottom flex items-center justify-around z-50 px-4 shadow-2xl">
           <button onClick={() => setView('Home')} className={`p-4 rounded-full transition-all ${view === 'Home' ? 'text-blue-500 scale-110' : 'text-slate-700'}`}><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></button>
           <button onClick={() => setView('History')} className={`p-4 rounded-full transition-all ${view === 'History' ? 'text-blue-500 scale-110' : 'text-slate-700'}`}><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg></button>
           <button onClick={() => setView('Report')} className={`p-4 rounded-full transition-all ${view === 'Report' ? 'text-blue-500 scale-110' : 'text-slate-700'}`}><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></button>
+          {activeSession && <button onClick={() => setView('Active')} className={`p-4 rounded-full transition-all ${view === 'Active' ? 'text-blue-500 scale-110' : 'text-green-500'}`}><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z"/></svg></button>}
         </nav>
       )}
     </div>
