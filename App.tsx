@@ -6,133 +6,21 @@ import { SmartTargets } from './components/SmartTargets';
 import { NutritionView } from './components/NutritionView';
 import { BarcodeScanner } from './components/BarcodeScanner';
 import { PhotoEstimator } from './components/PhotoEstimator';
+import { AuthView } from './components/AuthView';
+import { ProfileSetup } from './components/ProfileSetup';
 import { DEFAULT_EXERCISES } from './constants';
 import { SessionCard } from './components/SessionCard';
 import { generateMonthlyReport } from './services/geminiService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import supabase from './supabaseClient';
+import { User } from '@supabase/supabase-js';
 
 type View = 'Home' | 'Active' | 'History' | 'Report' | 'EditSession' | 'Nutrition';
 
-const Onboarding: React.FC<{ onComplete: (profile: any) => void }> = ({ onComplete }) => {
-  const [name, setName] = useState('');
-  const [age, setAge] = useState('');
-  const [weight, setWeight] = useState('');
-  const [height, setHeight] = useState('6.0'); 
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (name && age && weight && height) {
-      const profileData = {
-        name,
-        age: parseInt(age),
-        weight: parseFloat(weight),
-        height: parseFloat(height)
-      };
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert([profileData])
-        .select()
-        .single();
-      
-      if (error) {
-        console.error("Error saving profile:", error);
-        alert("Failed to save profile. Check connection.");
-      } else {
-        onComplete(data);
-      }
-    }
-  };
-
-  const heightOptions = [];
-  for (let feet = 3; feet <= 6; feet++) {
-    const maxInches = (feet === 6) ? 7 : 11;
-    for (let inches = 0; inches <= maxInches; inches++) {
-      const decimalValue = (feet + inches / 12).toFixed(2);
-      heightOptions.push({
-        label: `${feet}'${inches}"`,
-        value: decimalValue
-      });
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-black animate-in fade-in duration-700">
-      <h1 className="text-4xl font-black tracking-tighter text-white uppercase italic mb-2 text-center">Zak's IronMind</h1>
-      <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mb-10">Initializing Logical Core</p>
-      
-      <form onSubmit={handleSubmit} className="w-full max-w-xs space-y-6">
-        <div className="space-y-1">
-          <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Name</label>
-          <input 
-            required
-            type="text" 
-            placeholder="e.g. Zak"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 font-bold text-white placeholder-slate-700 focus:border-blue-500 outline-none"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Age</label>
-            <input 
-              required
-              type="number" 
-              placeholder="25"
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
-              className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 font-bold text-white placeholder-slate-700 focus:border-blue-500 outline-none"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Weight (kg)</label>
-            <input 
-              required
-              type="number" 
-              step="0.1"
-              placeholder="85.5"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 font-bold text-white placeholder-slate-700 focus:border-blue-500 outline-none"
-            />
-          </div>
-        </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Height</label>
-          <div className="relative">
-            <select
-              required
-              value={height}
-              onChange={(e) => setHeight(e.target.value)}
-              className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 font-bold text-white focus:border-blue-500 outline-none appearance-none cursor-pointer"
-            >
-              {heightOptions.map((opt) => (
-                <option key={opt.value} value={opt.value} className="bg-slate-900 text-white">
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-500">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"/></svg>
-            </div>
-          </div>
-        </div>
-        
-        <button 
-          type="submit"
-          className="w-full fire-button py-5 rounded-3xl font-black uppercase tracking-widest text-white mt-4"
-        >
-          Finalize Profile
-        </button>
-      </form>
-    </div>
-  );
-};
-
 const App: React.FC = () => {
   const [view, setView] = useState<View>('Home');
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [needsProfileSetup, setNeedsProfileSetup] = useState(false);
   const [profile, setProfile] = useState<any | null>(null);
   const [history, setHistory] = useState<WorkoutSession[]>([]);
   const [activeSession, setActiveSession] = useState<WorkoutSession | null>(null);
@@ -142,6 +30,7 @@ const App: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [showLogoutMenu, setShowLogoutMenu] = useState(false);
 
   const [preferredMachines, setPreferredMachines] = useState<Record<string, string[]>>({});
   const [editingSession, setEditingSession] = useState<WorkoutSession | null>(null);
@@ -188,7 +77,8 @@ const App: React.FC = () => {
         protein: food.protein,
         carbs: food.carbs,
         fat: food.fat,
-        grams: food.grams,
+        amount: food.amount,
+        unit: food.unit,
         source: food.source
       }]);
 
@@ -268,96 +158,155 @@ const App: React.FC = () => {
     setShowPhotoEstimator(false);
   };
 
+  // Check for existing auth session on mount
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-
-      // Restore active session from localStorage if exists
-      const savedSession = localStorage.getItem('activeSession');
-      if (savedSession) {
-        try {
-          const parsed = JSON.parse(savedSession) as WorkoutSession;
-          // Calculate elapsed time from startTime
-          const elapsedSeconds = Math.floor((Date.now() - parsed.startTime) / 1000);
-          setActiveSession(parsed);
-          setTimer(elapsedSeconds);
-          setView('Active');
-        } catch (e) {
-          console.error("Failed to restore session:", e);
-          localStorage.removeItem('activeSession');
-        }
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setAuthUser(session.user);
+        await loadUserData(session.user.id);
+      } else {
+        setIsLoading(false);
       }
-
-      // Load Profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-
-      if (profileData) {
-        setProfile(profileData);
-        // Load Sessions
-        const { data: sessionData, error: sessionError } = await supabase
-          .from('sessions')
-          .select('*')
-          .eq('profile_id', profileData.id)
-          .order('date', { ascending: false });
-
-        if (sessionData) {
-          setHistory(sessionData);
-          // Reconstruct preferred machines from history
-          const machines: Record<string, string[]> = {};
-          sessionData.forEach((s: any) => {
-            if (!machines[s.type]) {
-              machines[s.type] = s.exercises.map((e: any) => e.name);
-            }
-          });
-          setPreferredMachines(machines);
-        }
-
-        // Load Food Logs from Supabase
-        const { data: foodData, error: foodError } = await supabase
-          .from('food_logs')
-          .select('*')
-          .eq('profile_id', profileData.id)
-          .order('timestamp', { ascending: false });
-
-        if (foodData) {
-          setFoodLogs(foodData.map((f: any) => ({
-            id: f.id,
-            date: f.date,
-            timestamp: f.timestamp,
-            name: f.name,
-            calories: f.calories,
-            protein: f.protein,
-            carbs: f.carbs,
-            fat: f.fat,
-            grams: f.grams,
-            source: f.source
-          })));
-        }
-
-        // Load Water Logs from Supabase
-        const { data: waterData, error: waterError } = await supabase
-          .from('water_logs')
-          .select('*')
-          .eq('profile_id', profileData.id)
-          .order('timestamp', { ascending: false });
-
-        if (waterData) {
-          setWaterLogs(waterData.map((w: any) => ({
-            id: w.id,
-            date: w.date,
-            timestamp: w.timestamp,
-            amount: w.amount
-          })));
-        }
-      }
-      setIsLoading(false);
     };
-    loadData();
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setAuthUser(session.user);
+        await loadUserData(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        setAuthUser(null);
+        setProfile(null);
+        setHistory([]);
+        setFoodLogs([]);
+        setWaterLogs([]);
+        setNeedsProfileSetup(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const loadUserData = async (userId: string) => {
+    setIsLoading(true);
+
+    // Restore active session from localStorage if exists
+    const savedSession = localStorage.getItem('activeSession');
+    if (savedSession) {
+      try {
+        const parsed = JSON.parse(savedSession) as WorkoutSession;
+        // Calculate elapsed time from startTime
+        const elapsedSeconds = Math.floor((Date.now() - parsed.startTime) / 1000);
+        setActiveSession(parsed);
+        setTimer(elapsedSeconds);
+        setView('Active');
+      } catch (e) {
+        console.error("Failed to restore session:", e);
+        localStorage.removeItem('activeSession');
+      }
+    }
+
+    // Load Profile for this user
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (profileData) {
+      setProfile(profileData);
+      setNeedsProfileSetup(false);
+
+      // Load Sessions
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('profile_id', profileData.id)
+        .order('date', { ascending: false });
+
+      if (sessionData) {
+        setHistory(sessionData);
+        // Reconstruct preferred machines from history
+        const machines: Record<string, string[]> = {};
+        sessionData.forEach((s: any) => {
+          if (!machines[s.type]) {
+            machines[s.type] = s.exercises.map((e: any) => e.name);
+          }
+        });
+        setPreferredMachines(machines);
+      }
+
+      // Load Food Logs from Supabase
+      const { data: foodData, error: foodError } = await supabase
+        .from('food_logs')
+        .select('*')
+        .eq('profile_id', profileData.id)
+        .order('timestamp', { ascending: false });
+
+      if (foodData) {
+        setFoodLogs(foodData.map((f: any) => ({
+          id: f.id,
+          date: f.date,
+          timestamp: f.timestamp,
+          name: f.name,
+          calories: f.calories,
+          protein: f.protein,
+          carbs: f.carbs,
+          fat: f.fat,
+          amount: f.amount || f.grams,
+          unit: f.unit || 'g',
+          source: f.source
+        })));
+      }
+
+      // Load Water Logs from Supabase
+      const { data: waterData, error: waterError } = await supabase
+        .from('water_logs')
+        .select('*')
+        .eq('profile_id', profileData.id)
+        .order('timestamp', { ascending: false });
+
+      if (waterData) {
+        setWaterLogs(waterData.map((w: any) => ({
+          id: w.id,
+          date: w.date,
+          timestamp: w.timestamp,
+          amount: w.amount
+        })));
+      }
+    } else {
+      // No profile found for this user - needs setup
+      setNeedsProfileSetup(true);
+    }
+    setIsLoading(false);
+  };
+
+  const handleAuthSuccess = async (user: User) => {
+    setAuthUser(user);
+    await loadUserData(user.id);
+  };
+
+  const handleProfileComplete = (newProfile: any) => {
+    setProfile(newProfile);
+    setNeedsProfileSetup(false);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setShowLogoutMenu(false);
+    setAuthUser(null);
+    setProfile(null);
+    setHistory([]);
+    setFoodLogs([]);
+    setWaterLogs([]);
+    setActiveSession(null);
+    persistActiveSession(null);
+    setTimer(0);
+    setView('Home');
+  };
 
   useEffect(() => {
     if (activeSession && !activeSession.endTime) {
@@ -656,7 +605,28 @@ const App: React.FC = () => {
     const todayWorkout = getWorkoutForToday();
     const firstName = profile?.name || 'Zak';
     return (
-      <div className="flex flex-col items-center justify-center min-h-[90vh] p-8 text-center animate-in fade-in duration-500">
+      <div className="flex flex-col items-center justify-center min-h-[90vh] p-8 text-center animate-in fade-in duration-500 relative">
+        {/* Profile/Logout Menu */}
+        <div className="absolute top-4 right-4">
+          <button
+            onClick={() => setShowLogoutMenu(!showLogoutMenu)}
+            className="w-10 h-10 rounded-full bg-slate-900 border border-white/10 flex items-center justify-center text-white font-black text-sm uppercase"
+          >
+            {firstName.charAt(0)}
+          </button>
+          {showLogoutMenu && (
+            <div className="absolute right-0 top-12 bg-slate-900 border border-white/10 rounded-2xl p-2 shadow-xl z-50 min-w-[150px]">
+              <p className="text-[10px] text-slate-500 px-3 py-2 font-bold uppercase tracking-widest">{authUser?.email}</p>
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-3 py-2 text-red-400 font-bold text-sm rounded-xl hover:bg-red-900/30 transition-colors"
+              >
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
+
         <header className="mb-12">
           <h1 className="text-4xl font-black tracking-tighter text-white uppercase italic">IronMind</h1>
           <div className="flex flex-col gap-1 mt-2">
@@ -1039,7 +1009,30 @@ const App: React.FC = () => {
     );
   }
 
-  if (!profile) return <Onboarding onComplete={(p) => setProfile(p)} />;
+  // Show auth view if not logged in
+  if (!authUser) {
+    return <AuthView onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  // Show profile setup if user is logged in but has no profile
+  if (needsProfileSetup) {
+    return (
+      <ProfileSetup
+        userId={authUser.id}
+        userName={authUser.user_metadata?.name || ''}
+        userEmail={authUser.email || ''}
+        onComplete={handleProfileComplete}
+      />
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="animate-pulse text-slate-500 font-black uppercase tracking-[0.3em] text-[10px]">Loading profile...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen max-w-md mx-auto relative bg-black text-white selection:bg-blue-500 overflow-x-hidden">

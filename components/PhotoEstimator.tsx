@@ -94,7 +94,8 @@ export const PhotoEstimator: React.FC<PhotoEstimatorProps> = ({ onFoodsFound, on
         protein: f.protein,
         carbs: f.carbs,
         fat: f.fat,
-        grams: f.grams,
+        amount: f.grams,
+        unit: 'g' as const,
         source: 'ai' as const
       }));
 

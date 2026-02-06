@@ -94,6 +94,11 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
         const p = data.product;
         setProduct(p);
 
+        // Auto-detect if liquid
+        if (p.product_name && detectIfLiquid(p.product_name)) {
+          setUnit('ml');
+        }
+
         // Extract nutrients - try multiple possible property names
         const cal = getNutrient(p.nutriments,
           'energy-kcal_100g',
@@ -147,6 +152,8 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
     }
   };
 
+  const [unit, setUnit] = useState<'g' | 'ml'>('g');
+
   const handleConfirm = () => {
     if (!product) return;
 
@@ -162,7 +169,8 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
       protein: Math.round(rawNutrients.protein * multiplier * 10) / 10,
       carbs: Math.round(rawNutrients.carbs * multiplier * 10) / 10,
       fat: Math.round(rawNutrients.fat * multiplier * 10) / 10,
-      grams: grams,
+      amount: grams,
+      unit: unit,
       source: 'barcode'
     };
 
@@ -174,7 +182,15 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
     setRawNutrients({ cal: 0, protein: 0, carbs: 0, fat: 0 });
     setError(null);
     setGrams(100);
+    setUnit('g');
     await startScanner();
+  };
+
+  // Auto-detect liquids from product name
+  const detectIfLiquid = (productName: string): boolean => {
+    const liquidKeywords = ['cola', 'coke', 'pepsi', 'drink', 'juice', 'water', 'milk', 'soda', 'sprite', 'fanta', 'redbull', 'monster', 'beer', 'wine', 'coffee', 'tea', 'smoothie', 'shake'];
+    const lowerName = productName.toLowerCase();
+    return liquidKeywords.some(keyword => lowerName.includes(keyword));
   };
 
   const calculated = {
@@ -279,7 +295,24 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
 
             {/* Amount selector */}
             <div className="mb-4">
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">Your Portion (grams)</p>
+              <div className="flex justify-between items-center mb-2">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Your Portion</p>
+                {/* Unit Toggle */}
+                <div className="flex bg-slate-800 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setUnit('g')}
+                    className={`px-3 py-1 text-xs font-bold transition-all ${unit === 'g' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}
+                  >
+                    grams
+                  </button>
+                  <button
+                    onClick={() => setUnit('ml')}
+                    className={`px-3 py-1 text-xs font-bold transition-all ${unit === 'ml' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}
+                  >
+                    ml
+                  </button>
+                </div>
+              </div>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setGrams(g => Math.max(10, g - 25))}
@@ -287,12 +320,15 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
                 >
                   -
                 </button>
-                <input
-                  type="number"
-                  value={grams}
-                  onChange={(e) => setGrams(parseInt(e.target.value) || 0)}
-                  className="flex-1 bg-slate-900 border border-white/10 rounded-xl p-4 text-center text-3xl font-black text-white focus:outline-none focus:border-green-500"
-                />
+                <div className="flex-1 relative">
+                  <input
+                    type="number"
+                    value={grams}
+                    onChange={(e) => setGrams(parseInt(e.target.value) || 0)}
+                    className="w-full bg-slate-900 border border-white/10 rounded-xl p-4 text-center text-3xl font-black text-white focus:outline-none focus:border-green-500"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">{unit}</span>
+                </div>
                 <button
                   onClick={() => setGrams(g => g + 25)}
                   className="bg-slate-800 w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-2xl active:bg-slate-700"
@@ -304,15 +340,26 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
 
             {/* Quick portions */}
             <div className="grid grid-cols-4 gap-2 mb-6">
-              <button onClick={() => setGrams(50)} className="bg-slate-800 py-3 rounded-xl text-sm font-bold text-slate-400 active:bg-slate-700">50g</button>
-              <button onClick={() => setGrams(100)} className="bg-slate-800 py-3 rounded-xl text-sm font-bold text-slate-400 active:bg-slate-700">100g</button>
-              <button onClick={() => setGrams(150)} className="bg-slate-800 py-3 rounded-xl text-sm font-bold text-slate-400 active:bg-slate-700">150g</button>
-              <button onClick={() => setGrams(200)} className="bg-slate-800 py-3 rounded-xl text-sm font-bold text-slate-400 active:bg-slate-700">200g</button>
+              {unit === 'ml' ? (
+                <>
+                  <button onClick={() => setGrams(150)} className="bg-slate-800 py-3 rounded-xl text-sm font-bold text-slate-400 active:bg-slate-700">150ml</button>
+                  <button onClick={() => setGrams(250)} className="bg-slate-800 py-3 rounded-xl text-sm font-bold text-slate-400 active:bg-slate-700">250ml</button>
+                  <button onClick={() => setGrams(330)} className="bg-slate-800 py-3 rounded-xl text-sm font-bold text-slate-400 active:bg-slate-700">330ml</button>
+                  <button onClick={() => setGrams(500)} className="bg-slate-800 py-3 rounded-xl text-sm font-bold text-slate-400 active:bg-slate-700">500ml</button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => setGrams(50)} className="bg-slate-800 py-3 rounded-xl text-sm font-bold text-slate-400 active:bg-slate-700">50g</button>
+                  <button onClick={() => setGrams(100)} className="bg-slate-800 py-3 rounded-xl text-sm font-bold text-slate-400 active:bg-slate-700">100g</button>
+                  <button onClick={() => setGrams(150)} className="bg-slate-800 py-3 rounded-xl text-sm font-bold text-slate-400 active:bg-slate-700">150g</button>
+                  <button onClick={() => setGrams(200)} className="bg-slate-800 py-3 rounded-xl text-sm font-bold text-slate-400 active:bg-slate-700">200g</button>
+                </>
+              )}
             </div>
 
             {/* Calculated totals */}
             <div className="bg-green-900/30 border border-green-500/30 rounded-2xl p-4 mb-6">
-              <p className="text-[10px] text-green-400 font-bold uppercase tracking-widest mb-3">Your Portion ({grams}g)</p>
+              <p className="text-[10px] text-green-400 font-bold uppercase tracking-widest mb-3">Your Portion ({grams}{unit})</p>
               <div className="grid grid-cols-4 gap-2 text-center">
                 <div>
                   <p className="text-2xl font-black text-orange-400">{calculated.cal}</p>

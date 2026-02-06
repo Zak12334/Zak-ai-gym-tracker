@@ -55,8 +55,21 @@ export interface FoodLog {
   protein: number;
   carbs: number;
   fat: number;
-  grams: number;
+  amount: number; // grams or ml depending on unit
+  unit: 'g' | 'ml'; // grams for solids, ml for liquids
   source: 'manual' | 'barcode' | 'ai';
+}
+
+// Extended user profile for authentication
+export interface AuthUserProfile {
+  id: string;
+  user_id: string; // Supabase Auth user id
+  email: string;
+  name: string;
+  age: number;
+  weight: number;
+  height: number;
+  created_at?: string;
 }
 
 export interface WaterLog {

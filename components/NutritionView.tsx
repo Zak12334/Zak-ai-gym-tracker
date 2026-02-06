@@ -42,7 +42,8 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   const [manualProtein, setManualProtein] = useState('');
   const [manualCarbs, setManualCarbs] = useState('');
   const [manualFat, setManualFat] = useState('');
-  const [manualGrams, setManualGrams] = useState('100');
+  const [manualAmount, setManualAmount] = useState('100');
+  const [manualUnit, setManualUnit] = useState<'g' | 'ml'>('g');
 
   // Calculate daily totals
   const today = new Date().toISOString().split('T')[0];
@@ -87,7 +88,8 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         protein: nutrition.protein,
         carbs: nutrition.carbs,
         fat: nutrition.fat,
-        grams: parsed.grams,
+        amount: parsed.grams,
+        unit: 'g',
         source: 'manual'
       };
       onAddFood(newFood);
@@ -116,7 +118,8 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         protein: nutrition.protein,
         carbs: nutrition.carbs,
         fat: nutrition.fat,
-        grams: grams,
+        amount: grams,
+        unit: 'g',
         source: 'manual'
       };
       onAddFood(newFood);
@@ -149,7 +152,8 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       protein: parseFloat(manualProtein) || 0,
       carbs: parseFloat(manualCarbs) || 0,
       fat: parseFloat(manualFat) || 0,
-      grams: parseInt(manualGrams) || 0,
+      amount: parseInt(manualAmount) || 0,
+      unit: manualUnit,
       source: 'manual'
     };
     onAddFood(newFood);
@@ -160,7 +164,8 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     setManualProtein('');
     setManualCarbs('');
     setManualFat('');
-    setManualGrams('100');
+    setManualAmount('100');
+    setManualUnit('g');
     setIsManualMode(false);
     setShowQuickAdd(false);
   };
@@ -176,7 +181,8 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     setManualProtein('');
     setManualCarbs('');
     setManualFat('');
-    setManualGrams('100');
+    setManualAmount('100');
+    setManualUnit('g');
   };
 
   return (
@@ -395,14 +401,32 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Portion Size (g) - optional</label>
-                    <input
-                      type="number"
-                      value={manualGrams}
-                      onChange={(e) => setManualGrams(e.target.value)}
-                      placeholder="100"
-                      className="w-full bg-slate-800 border border-white/10 rounded-xl p-3 text-white font-bold placeholder-slate-700 focus:outline-none focus:border-blue-500 mt-1"
-                    />
+                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Portion Size</label>
+                    <div className="flex gap-2 mt-1">
+                      <input
+                        type="number"
+                        value={manualAmount}
+                        onChange={(e) => setManualAmount(e.target.value)}
+                        placeholder="100"
+                        className="flex-1 bg-slate-800 border border-white/10 rounded-xl p-3 text-white font-bold placeholder-slate-700 focus:outline-none focus:border-blue-500"
+                      />
+                      <div className="flex bg-slate-800 rounded-xl border border-white/10 overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setManualUnit('g')}
+                          className={`px-4 py-3 font-bold text-sm transition-all ${manualUnit === 'g' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}
+                        >
+                          g
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setManualUnit('ml')}
+                          className={`px-4 py-3 font-bold text-sm transition-all ${manualUnit === 'ml' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}
+                        >
+                          ml
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -567,7 +591,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               <div key={food.id} className="bg-slate-900/50 rounded-2xl p-4 border border-white/5 flex justify-between items-center">
                 <div>
                   <p className="font-bold text-white">{food.name}</p>
-                  <p className="text-[10px] text-slate-500">{food.grams}g • {food.source}</p>
+                  <p className="text-[10px] text-slate-500">{food.amount || food.grams}{food.unit || 'g'} • {food.source}</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
