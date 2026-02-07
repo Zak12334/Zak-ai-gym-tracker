@@ -181,7 +181,12 @@ const App: React.FC = () => {
 
         if (session?.user) {
           setAuthUser(session.user);
-          await loadUserData(session.user.id);
+          try {
+            await loadUserData(session.user.id);
+          } catch (loadErr) {
+            console.error('Failed to load user data:', loadErr);
+            setIsLoading(false);
+          }
         } else {
           setIsLoading(false);
         }
@@ -358,7 +363,12 @@ const App: React.FC = () => {
 
   const handleAuthSuccess = async (user: User) => {
     setAuthUser(user);
-    await loadUserData(user.id);
+    try {
+      await loadUserData(user.id);
+    } catch (err) {
+      console.error('Failed to load user data after auth:', err);
+      setIsLoading(false);
+    }
   };
 
   const handleProfileComplete = (newProfile: any) => {
