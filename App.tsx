@@ -226,6 +226,17 @@ const App: React.FC = () => {
         }
       }
 
+      // Check if Supabase is configured
+      const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || (globalThis as any).VITE_SUPABASE_URL;
+      const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || (globalThis as any).VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        console.warn('Supabase not configured - app will work with local data only');
+        setNeedsProfileSetup(true);
+        setIsLoading(false);
+        return;
+      }
+
       // Load Profile for this user with timeout
       const profilePromise = supabase
         .from('profiles')
@@ -234,12 +245,12 @@ const App: React.FC = () => {
         .maybeSingle();
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Profile load timeout')), 10000)
+        setTimeout(() => reject(new Error('Profile load timeout')), 5000)
       );
 
       let profileData, profileError;
       try {
-        const result = await Promise.race([profilePromise, timeoutPromise]);
+        const result = await Promise.race([profilePromise, timeoutPromise]) as Awaited<typeof profilePromise>;
         profileData = result.data;
         profileError = result.error;
       } catch (timeoutErr) {
@@ -261,10 +272,10 @@ const App: React.FC = () => {
             .order('date', { ascending: false });
 
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Sessions load timeout')), 8000)
+            setTimeout(() => reject(new Error('Sessions load timeout')), 5000)
           );
 
-          const sessionResult = await Promise.race([sessionPromise, timeoutPromise]);
+          const sessionResult = await Promise.race([sessionPromise, timeoutPromise]) as Awaited<typeof sessionPromise>;
           const sessionData = sessionResult.data;
 
           if (sessionData) {
@@ -279,7 +290,7 @@ const App: React.FC = () => {
             setPreferredMachines(machines);
           }
         } catch (sessionErr) {
-          console.error('Failed to load sessions:', sessionErr);
+        console.warn('Failed to load sessions (using local data):', sessionErr);
         }
 
         // Load Food Logs from Supabase with timeout
@@ -291,10 +302,10 @@ const App: React.FC = () => {
             .order('timestamp', { ascending: false });
 
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Food logs load timeout')), 8000)
+            setTimeout(() => reject(new Error('Food logs load timeout')), 5000)
           );
 
-          const foodResult = await Promise.race([foodPromise, timeoutPromise]);
+          const foodResult = await Promise.race([foodPromise, timeoutPromise]) as Awaited<typeof foodPromise>;
           const foodData = foodResult.data;
 
           if (foodData) {
@@ -313,7 +324,7 @@ const App: React.FC = () => {
             })));
           }
         } catch (foodErr) {
-          console.error('Failed to load food logs:', foodErr);
+          console.warn('Failed to load food logs (using local data):', foodErr);
         }
 
         // Load Water Logs from Supabase with timeout
@@ -325,10 +336,10 @@ const App: React.FC = () => {
             .order('timestamp', { ascending: false });
 
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Water logs load timeout')), 8000)
+            setTimeout(() => reject(new Error('Water logs load timeout')), 5000)
           );
 
-          const waterResult = await Promise.race([waterPromise, timeoutPromise]);
+          const waterResult = await Promise.race([waterPromise, timeoutPromise]) as Awaited<typeof waterPromise>;
           const waterData = waterResult.data;
 
           if (waterData) {
@@ -340,7 +351,7 @@ const App: React.FC = () => {
             })));
           }
         } catch (waterErr) {
-          console.error('Failed to load water logs:', waterErr);
+          console.warn('Failed to load water logs (using local data):', waterErr);
         }
       } else {
         // No profile found for this user - needs setup
