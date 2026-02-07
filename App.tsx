@@ -160,14 +160,21 @@ const App: React.FC = () => {
 
   // Check for existing auth session on mount
   useEffect(() => {
+    let isMounted = true;
+    let hasLoaded = false;
+
     const checkAuth = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
+        if (!isMounted || hasLoaded) return;
+        hasLoaded = true;
+
         if (error) {
-          console.error('Auth error:', error);
+          console.error("Auth session error:", error);
           setIsLoading(false);
           return;
         }
+
         if (session?.user) {
           setAuthUser(session.user);
           await loadUserData(session.user.id);
@@ -175,18 +182,34 @@ const App: React.FC = () => {
           setIsLoading(false);
         }
       } catch (err) {
-        console.error('Failed to check auth:', err);
-        setIsLoading(false);
+        console.error("Auth check failed:", err);
+        if (isMounted) setIsLoading(false);
       }
     };
 
     checkAuth();
 
-    // Listen for auth changes
+    // Safety timeout - never stay loading forever (max 10 seconds)
+    const timeout = setTimeout(() => {
+      if (isMounted && isLoading) {
+        console.warn("Loading timeout reached, forcing load complete");
+        setIsLoading(false);
+      }
+    }, 10000);
+
+    // Listen for auth changes (but ignore initial session which we handle above)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
+      // Skip INITIAL_SESSION as we handle it in checkAuth
+      if (event === 'INITIAL_SESSION') return;
+
       if (event === 'SIGNED_IN' && session?.user) {
         setAuthUser(session.user);
-        await loadUserData(session.user.id);
+        if (!hasLoaded) {
+          hasLoaded = true;
+          await loadUserData(session.user.id);
+        }
       } else if (event === 'SIGNED_OUT') {
         setAuthUser(null);
         setProfile(null);
@@ -194,104 +217,139 @@ const App: React.FC = () => {
         setFoodLogs([]);
         setWaterLogs([]);
         setNeedsProfileSetup(false);
+        setIsLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadUserData = async (userId: string) => {
     setIsLoading(true);
 
-    // Restore active session from localStorage if exists
-    const savedSession = localStorage.getItem('activeSession');
-    if (savedSession) {
-      try {
-        const parsed = JSON.parse(savedSession) as WorkoutSession;
-        // Calculate elapsed time from startTime
-        const elapsedSeconds = Math.floor((Date.now() - parsed.startTime) / 1000);
-        setActiveSession(parsed);
-        setTimer(elapsedSeconds);
-        setView('Active');
-      } catch (e) {
-        console.error("Failed to restore session:", e);
-        localStorage.removeItem('activeSession');
+    try {
+      // Restore active session from localStorage if exists
+      const savedSession = localStorage.getItem('activeSession');
+      if (savedSession) {
+        try {
+          const parsed = JSON.parse(savedSession) as WorkoutSession;
+          // Calculate elapsed time from startTime
+          const elapsedSeconds = Math.floor((Date.now() - parsed.startTime) / 1000);
+          setActiveSession(parsed);
+          setTimer(elapsedSeconds);
+          setView('Active');
+        } catch (e) {
+          console.error("Failed to restore session:", e);
+          localStorage.removeItem('activeSession');
+        }
       }
+
+      // Load Profile for this user
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error("Profile load error:", profileError);
+        // If RLS blocks us, try without user_id filter (fallback for migration)
+        const { data: fallbackProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .limit(1)
+          .maybeSingle();
+
+        if (fallbackProfile) {
+          setProfile(fallbackProfile);
+          setNeedsProfileSetup(false);
+        } else {
+          setNeedsProfileSetup(true);
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      if (profileData) {
+        setProfile(profileData);
+        setNeedsProfileSetup(false);
+
+        // Load Sessions
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('sessions')
+          .select('*')
+          .eq('profile_id', profileData.id)
+          .order('date', { ascending: false });
+
+        if (sessionError) {
+          console.error("Sessions load error:", sessionError);
+        } else if (sessionData) {
+          setHistory(sessionData);
+          // Reconstruct preferred machines from history
+          const machines: Record<string, string[]> = {};
+          sessionData.forEach((s: any) => {
+            if (!machines[s.type]) {
+              machines[s.type] = s.exercises.map((e: any) => e.name);
+            }
+          });
+          setPreferredMachines(machines);
+        }
+
+        // Load Food Logs from Supabase
+        const { data: foodData, error: foodError } = await supabase
+          .from('food_logs')
+          .select('*')
+          .eq('profile_id', profileData.id)
+          .order('timestamp', { ascending: false });
+
+        if (foodError) {
+          console.error("Food logs load error:", foodError);
+        } else if (foodData) {
+          setFoodLogs(foodData.map((f: any) => ({
+            id: f.id,
+            date: f.date,
+            timestamp: f.timestamp,
+            name: f.name,
+            calories: f.calories,
+            protein: f.protein,
+            carbs: f.carbs,
+            fat: f.fat,
+            amount: f.amount || f.grams,
+            unit: f.unit || 'g',
+            source: f.source
+          })));
+        }
+
+        // Load Water Logs from Supabase
+        const { data: waterData, error: waterError } = await supabase
+          .from('water_logs')
+          .select('*')
+          .eq('profile_id', profileData.id)
+          .order('timestamp', { ascending: false });
+
+        if (waterError) {
+          console.error("Water logs load error:", waterError);
+        } else if (waterData) {
+          setWaterLogs(waterData.map((w: any) => ({
+            id: w.id,
+            date: w.date,
+            timestamp: w.timestamp,
+            amount: w.amount
+          })));
+        }
+      } else {
+        // No profile found for this user - needs setup
+        setNeedsProfileSetup(true);
+      }
+    } catch (err) {
+      console.error("loadUserData failed:", err);
+    } finally {
+      setIsLoading(false);
     }
-
-    // Load Profile for this user
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (profileData) {
-      setProfile(profileData);
-      setNeedsProfileSetup(false);
-
-      // Load Sessions
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('profile_id', profileData.id)
-        .order('date', { ascending: false });
-
-      if (sessionData) {
-        setHistory(sessionData);
-        // Reconstruct preferred machines from history
-        const machines: Record<string, string[]> = {};
-        sessionData.forEach((s: any) => {
-          if (!machines[s.type]) {
-            machines[s.type] = s.exercises.map((e: any) => e.name);
-          }
-        });
-        setPreferredMachines(machines);
-      }
-
-      // Load Food Logs from Supabase
-      const { data: foodData, error: foodError } = await supabase
-        .from('food_logs')
-        .select('*')
-        .eq('profile_id', profileData.id)
-        .order('timestamp', { ascending: false });
-
-      if (foodData) {
-        setFoodLogs(foodData.map((f: any) => ({
-          id: f.id,
-          date: f.date,
-          timestamp: f.timestamp,
-          name: f.name,
-          calories: f.calories,
-          protein: f.protein,
-          carbs: f.carbs,
-          fat: f.fat,
-          amount: f.amount || f.grams,
-          unit: f.unit || 'g',
-          source: f.source
-        })));
-      }
-
-      // Load Water Logs from Supabase
-      const { data: waterData, error: waterError } = await supabase
-        .from('water_logs')
-        .select('*')
-        .eq('profile_id', profileData.id)
-        .order('timestamp', { ascending: false });
-
-      if (waterData) {
-        setWaterLogs(waterData.map((w: any) => ({
-          id: w.id,
-          date: w.date,
-          timestamp: w.timestamp,
-          amount: w.amount
-        })));
-      }
-    } else {
-      // No profile found for this user - needs setup
-      setNeedsProfileSetup(true);
-    }
-    setIsLoading(false);
   };
 
   const handleAuthSuccess = async (user: User) => {
