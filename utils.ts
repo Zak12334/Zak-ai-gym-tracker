@@ -1,10 +1,60 @@
 
 import { WEEKLY_SCHEDULE } from './constants';
-import { DayType, WorkoutSession, Exercise, Set } from './types';
+import { DayType, WorkoutSession, Exercise, Set, SplitType, PRESET_SPLITS } from './types';
 
+// Original function for Zak's hardcoded schedule (profiles without split_type)
 export const getWorkoutForToday = (): DayType => {
   const day = new Date().getDay();
   return WEEKLY_SCHEDULE[day] || DayType.Rest;
+};
+
+// New function for user-specific splits
+export interface UserSplitConfig {
+  split_type: SplitType | null;
+  split_days: string[] | null;
+  split_rest_pattern: number | null;
+  split_current_day_index: number | null;
+  split_start_date: string | null;
+}
+
+export const getWorkoutForUser = (profile: UserSplitConfig): string => {
+  // If no split configured, fall back to original schedule (for Zak's profile)
+  if (!profile.split_type || !profile.split_days || profile.split_start_date === null) {
+    return getWorkoutForToday();
+  }
+
+  const { split_days, split_rest_pattern, split_current_day_index, split_start_date } = profile;
+  const restPattern = split_rest_pattern || split_days.length;
+
+  // Calculate days since start
+  const startDate = new Date(split_start_date);
+  startDate.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  // Calculate cycle length (workout days + rest day)
+  const cycleLength = restPattern + 1;
+
+  // Where they started in the rotation (which workout day)
+  const startOffset = split_current_day_index !== null && split_current_day_index >= 0
+    ? split_current_day_index
+    : 0;
+
+  // Total days into the rotation
+  const totalDaysIntoRotation = startOffset + daysSinceStart;
+
+  // Position in current cycle
+  const positionInCycle = totalDaysIntoRotation % cycleLength;
+
+  // If position is >= number of workout days in the pattern, it's a rest day
+  if (positionInCycle >= restPattern) {
+    return 'Rest Day';
+  }
+
+  // Otherwise, return the appropriate workout day
+  const workoutDayIndex = positionInCycle % split_days.length;
+  return split_days[workoutDayIndex];
 };
 
 export const formatDuration = (seconds: number): string => {

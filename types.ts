@@ -29,6 +29,40 @@ export interface UserProfile {
   height: number;
 }
 
+// Workout split types
+export type SplitType = 'ppl' | 'bro' | 'upper_lower' | 'full_body' | 'custom';
+
+export interface WorkoutSplit {
+  type: SplitType;
+  days: string[]; // e.g., ['Push', 'Pull', 'Legs']
+  restPattern: number; // rest after every X workout days (e.g., 3 = PPL then rest)
+  currentDayIndex: number; // which day they started on (0-based)
+  startDate: string; // ISO date when they started
+}
+
+export const PRESET_SPLITS: Record<Exclude<SplitType, 'custom'>, { name: string; days: string[]; restPattern: number }> = {
+  ppl: {
+    name: 'Push/Pull/Legs',
+    days: ['Push', 'Pull', 'Legs'],
+    restPattern: 6 // PPL PPL Rest
+  },
+  bro: {
+    name: 'Bro Split',
+    days: ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs'],
+    restPattern: 5 // 5 days then rest
+  },
+  upper_lower: {
+    name: 'Upper/Lower',
+    days: ['Upper', 'Lower'],
+    restPattern: 4 // Upper Lower Upper Lower Rest
+  },
+  full_body: {
+    name: 'Full Body',
+    days: ['Full Body'],
+    restPattern: 2 // Full Body, Rest, Full Body, Rest
+  }
+};
+
 export enum DayType {
   ChestTriceps = "Chest & Triceps",
   BackAbs = "Back & Abs",

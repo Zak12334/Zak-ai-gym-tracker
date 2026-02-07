@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { WorkoutSession, DayType, Exercise, Set, UserProfile, FoodLog, WaterLog, NutritionGoals } from './types';
-import { getWorkoutForToday, generateUUID, formatDuration, calculateSmartTarget, getDaysSinceLastWorkoutType } from './utils';
+import { getWorkoutForToday, getWorkoutForUser, generateUUID, formatDuration, calculateSmartTarget, getDaysSinceLastWorkoutType } from './utils';
 import { SmartTargets } from './components/SmartTargets';
 import { NutritionView } from './components/NutritionView';
 import { BarcodeScanner } from './components/BarcodeScanner';
@@ -392,7 +392,7 @@ const App: React.FC = () => {
   }, [activeSession]);
 
   const startSession = () => {
-    const type = getWorkoutForToday();
+    const type = profile?.split_type ? getWorkoutForUser(profile) : getWorkoutForToday();
     const userDefined = preferredMachines[type];
     const initialExerciseNames = (userDefined && userDefined.length > 0) 
       ? userDefined 
@@ -671,7 +671,7 @@ const App: React.FC = () => {
   };
 
   const renderHome = () => {
-    const todayWorkout = getWorkoutForToday();
+    const todayWorkout = profile?.split_type ? getWorkoutForUser(profile) : getWorkoutForToday();
     const firstName = profile?.name || 'Zak';
     return (
       <div className="flex flex-col items-center justify-center min-h-[90vh] p-8 text-center animate-in fade-in duration-500 relative">
