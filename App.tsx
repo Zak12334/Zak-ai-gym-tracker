@@ -83,7 +83,7 @@ const App: React.FC = () => {
       }]);
 
     if (error) {
-      console.error("Error saving food log:", error);
+      console.error("Error saving food log:", error.message, error.details, error.hint, error.code);
       // Revert on error
       setFoodLogs(prev => prev.filter(f => f.id !== food.id));
     }
