@@ -161,11 +161,21 @@ const App: React.FC = () => {
   // Check for existing auth session on mount
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setAuthUser(session.user);
-        await loadUserData(session.user.id);
-      } else {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Auth error:', error);
+          setIsLoading(false);
+          return;
+        }
+        if (session?.user) {
+          setAuthUser(session.user);
+          await loadUserData(session.user.id);
+        } else {
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error('Failed to check auth:', err);
         setIsLoading(false);
       }
     };
