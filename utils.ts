@@ -1,6 +1,6 @@
 
 import { WEEKLY_SCHEDULE } from './constants';
-import { DayType, WorkoutSession, Exercise, Set, SplitType, PRESET_SPLITS } from './types';
+import { DayType, WorkoutSession, Exercise, Set, SplitType, PRESET_SPLITS, Gender, ActivityLevel, ACTIVITY_LEVELS } from './types';
 
 // Original function for Zak's hardcoded schedule (profiles without split_type)
 export const getWorkoutForToday = (): DayType => {
@@ -369,4 +369,93 @@ export const getDaysSinceLastWorkoutType = (
     }
   }
   return null;
+};
+
+// ============================================
+// Nutrition Calculations (Mifflin-St Jeor)
+// ============================================
+
+/**
+ * Calculate BMR using Mifflin-St Jeor equation
+ * - Men: BMR = (10 × weight in kg) + (6.25 × height in cm) - (5 × age) + 5
+ * - Women: BMR = (10 × weight in kg) + (6.25 × height in cm) - (5 × age) - 161
+ */
+export const calculateBMR = (
+  weight: number, // kg
+  height: number, // decimal feet (e.g., 5.75 for 5'9")
+  age: number,
+  gender: Gender
+): number => {
+  // Convert height from decimal feet to cm
+  const heightInCm = height * 30.48;
+
+  const baseBMR = (10 * weight) + (6.25 * heightInCm) - (5 * age);
+
+  if (gender === 'male') {
+    return Math.round(baseBMR + 5);
+  } else {
+    return Math.round(baseBMR - 161);
+  }
+};
+
+/**
+ * Calculate TDEE (Total Daily Energy Expenditure)
+ * TDEE = BMR × activity multiplier
+ */
+export const calculateTDEE = (
+  bmr: number,
+  activityLevel: ActivityLevel
+): number => {
+  const multiplier = ACTIVITY_LEVELS[activityLevel].multiplier;
+  return Math.round(bmr * multiplier);
+};
+
+/**
+ * Calculate protein goal based on body weight
+ * Using 1.8g per kg (middle ground for muscle building)
+ */
+export const calculateProteinGoal = (weight: number): number => {
+  return Math.round(weight * 1.8);
+};
+
+/**
+ * Calculate all nutrition goals from user stats
+ */
+export interface NutritionCalculation {
+  bmr: number;
+  tdee: number; // maintenance calories
+  protein: number; // grams
+  carbs: number; // grams (roughly 45% of remaining calories)
+  fat: number; // grams (roughly 25% of calories)
+}
+
+export const calculateNutritionGoals = (
+  weight: number,
+  height: number,
+  age: number,
+  gender: Gender,
+  activityLevel: ActivityLevel
+): NutritionCalculation => {
+  const bmr = calculateBMR(weight, height, age, gender);
+  const tdee = calculateTDEE(bmr, activityLevel);
+  const protein = calculateProteinGoal(weight);
+
+  // Calculate protein calories (4 cal/g)
+  const proteinCalories = protein * 4;
+  const remainingCalories = tdee - proteinCalories;
+
+  // Fat: ~25% of total calories (9 cal/g)
+  const fat = Math.round((tdee * 0.25) / 9);
+
+  // Carbs: remaining calories (4 cal/g)
+  const fatCalories = fat * 9;
+  const carbs = Math.round((remainingCalories - (fatCalories - (tdee * 0.25))) / 4);
+
+  return {
+    bmr,
+    tdee,
+    protein,
+    carbs: Math.max(carbs, 100), // minimum 100g carbs
+    fat
+  };
 };

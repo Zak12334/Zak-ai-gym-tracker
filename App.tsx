@@ -40,15 +40,17 @@ const App: React.FC = () => {
   // Nutrition tracking state
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
   const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
-  const [nutritionGoals] = useState<NutritionGoals>({
-    calories: 2500,
-    protein: 180,
-    carbs: 250,
-    fat: 80,
-    water: 3000 // 3 liters
-  });
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showPhotoEstimator, setShowPhotoEstimator] = useState(false);
+
+  // Compute nutrition goals from profile (with fallbacks for existing users)
+  const nutritionGoals: NutritionGoals = {
+    calories: profile?.calorie_goal || 2500,
+    protein: profile?.protein_goal || 180,
+    carbs: Math.round((profile?.calorie_goal || 2500) * 0.4 / 4), // ~40% of calories
+    fat: Math.round((profile?.calorie_goal || 2500) * 0.25 / 9), // ~25% of calories
+    water: 3000 // 3 liters
+  };
 
   // Helper to persist active session to localStorage
   const persistActiveSession = (session: WorkoutSession | null) => {

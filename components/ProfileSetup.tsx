@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import supabase from '../supabaseClient';
-import { SplitType, PRESET_SPLITS } from '../types';
+import { SplitType, PRESET_SPLITS, Gender, ActivityLevel, ACTIVITY_LEVELS } from '../types';
+import { calculateNutritionGoals } from '../utils';
 
 interface ProfileSetupProps {
   userId: string;
@@ -17,6 +18,8 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ userId, userName, us
   const [age, setAge] = useState('');
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('5.75'); // 5'9"
+  const [gender, setGender] = useState<Gender>('male');
+  const [activityLevel, setActivityLevel] = useState<ActivityLevel>('active'); // Default for gym users
 
   // Split fields
   const [splitType, setSplitType] = useState<SplitType>('ppl');
@@ -67,6 +70,15 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ userId, userName, us
     const splitDays = getCurrentSplitDays();
     const restPattern = splitType === 'custom' ? customRestPattern : PRESET_SPLITS[splitType].restPattern;
 
+    // Calculate personalized nutrition goals
+    const nutritionGoals = calculateNutritionGoals(
+      parseFloat(weight),
+      parseFloat(height),
+      parseInt(age),
+      gender,
+      activityLevel
+    );
+
     const profileData = {
       user_id: userId,
       email: userEmail,
@@ -74,6 +86,10 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ userId, userName, us
       age: parseInt(age),
       weight: parseFloat(weight),
       height: parseFloat(height),
+      gender: gender,
+      activity_level: activityLevel,
+      calorie_goal: nutritionGoals.tdee,
+      protein_goal: nutritionGoals.protein,
       split_type: splitType,
       split_days: splitDays,
       split_rest_pattern: restPattern,
@@ -140,6 +156,35 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ userId, userName, us
             />
           </div>
 
+          {/* Gender selection */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Gender</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setGender('male')}
+                className={`p-4 rounded-2xl border font-bold transition-all ${
+                  gender === 'male'
+                    ? 'bg-blue-900/30 border-blue-500 text-white'
+                    : 'bg-slate-900 border-white/10 text-slate-400 hover:border-white/30'
+                }`}
+              >
+                Male
+              </button>
+              <button
+                type="button"
+                onClick={() => setGender('female')}
+                className={`p-4 rounded-2xl border font-bold transition-all ${
+                  gender === 'female'
+                    ? 'bg-pink-900/30 border-pink-500 text-white'
+                    : 'bg-slate-900 border-white/10 text-slate-400 hover:border-white/30'
+                }`}
+              >
+                Female
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Age</label>
@@ -187,6 +232,33 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ userId, userName, us
                 </svg>
               </div>
             </div>
+          </div>
+
+          {/* Activity Level */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Activity Level</label>
+            <div className="relative">
+              <select
+                required
+                value={activityLevel}
+                onChange={(e) => setActivityLevel(e.target.value as ActivityLevel)}
+                className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 font-bold text-white focus:border-blue-500 outline-none appearance-none cursor-pointer"
+              >
+                {(Object.keys(ACTIVITY_LEVELS) as ActivityLevel[]).map((level) => (
+                  <option key={level} value={level} className="bg-slate-900 text-white">
+                    {ACTIVITY_LEVELS[level].label}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-500">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-600 ml-1 mt-1">
+              {ACTIVITY_LEVELS[activityLevel].description}
+            </p>
           </div>
 
           <button

@@ -94,6 +94,18 @@ export interface FoodLog {
   source: 'manual' | 'barcode' | 'ai';
 }
 
+// Gender and activity level types
+export type Gender = 'male' | 'female';
+export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+
+export const ACTIVITY_LEVELS: Record<ActivityLevel, { label: string; multiplier: number; description: string }> = {
+  sedentary: { label: 'Sedentary', multiplier: 1.2, description: 'Little or no exercise' },
+  light: { label: 'Lightly Active', multiplier: 1.375, description: 'Light exercise 1-3 days/week' },
+  moderate: { label: 'Moderately Active', multiplier: 1.55, description: 'Moderate exercise 3-5 days/week' },
+  active: { label: 'Active', multiplier: 1.725, description: 'Hard exercise 6-7 days/week' },
+  very_active: { label: 'Very Active', multiplier: 1.9, description: 'Very hard exercise & physical job' }
+};
+
 // Extended user profile for authentication
 export interface AuthUserProfile {
   id: string;
@@ -103,6 +115,10 @@ export interface AuthUserProfile {
   age: number;
   weight: number;
   height: number;
+  gender?: Gender;
+  activity_level?: ActivityLevel;
+  calorie_goal?: number;
+  protein_goal?: number;
   created_at?: string;
 }
 
