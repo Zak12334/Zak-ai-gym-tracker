@@ -77,6 +77,7 @@ const App: React.FC = () => {
         protein: food.protein,
         carbs: food.carbs,
         fat: food.fat,
+        grams: food.amount, // Keep for backward compatibility with DB constraint
         amount: food.amount,
         unit: food.unit,
         source: food.source
