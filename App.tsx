@@ -171,7 +171,12 @@ const App: React.FC = () => {
         }
         if (session?.user) {
           setAuthUser(session.user);
-          await loadUserData(session.user.id);
+          try {
+            await loadUserData(session.user.id);
+          } catch (loadErr) {
+            console.error('Failed to load user data:', loadErr);
+            setIsLoading(false);
+          }
         } else {
           setIsLoading(false);
         }
@@ -204,100 +209,159 @@ const App: React.FC = () => {
   const loadUserData = async (userId: string) => {
     setIsLoading(true);
 
-    // Restore active session from localStorage if exists
-    const savedSession = localStorage.getItem('activeSession');
-    if (savedSession) {
+    try {
+      // Restore active session from localStorage if exists
+      const savedSession = localStorage.getItem('activeSession');
+      if (savedSession) {
+        try {
+          const parsed = JSON.parse(savedSession) as WorkoutSession;
+          // Calculate elapsed time from startTime
+          const elapsedSeconds = Math.floor((Date.now() - parsed.startTime) / 1000);
+          setActiveSession(parsed);
+          setTimer(elapsedSeconds);
+          setView('Active');
+        } catch (e) {
+          console.error("Failed to restore session:", e);
+          localStorage.removeItem('activeSession');
+        }
+      }
+
+      // Load Profile for this user with timeout
+      const profilePromise = supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Profile load timeout')), 10000)
+      );
+
+      let profileData, profileError;
       try {
-        const parsed = JSON.parse(savedSession) as WorkoutSession;
-        // Calculate elapsed time from startTime
-        const elapsedSeconds = Math.floor((Date.now() - parsed.startTime) / 1000);
-        setActiveSession(parsed);
-        setTimer(elapsedSeconds);
-        setView('Active');
-      } catch (e) {
-        console.error("Failed to restore session:", e);
-        localStorage.removeItem('activeSession');
+        const result = await Promise.race([profilePromise, timeoutPromise]);
+        profileData = result.data;
+        profileError = result.error;
+      } catch (timeoutErr) {
+        console.error('Profile load timed out or failed:', timeoutErr);
+        profileData = null;
+        profileError = timeoutErr;
       }
-    }
 
-    // Load Profile for this user
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
+      if (profileData) {
+        setProfile(profileData);
+        setNeedsProfileSetup(false);
 
-    if (profileData) {
-      setProfile(profileData);
-      setNeedsProfileSetup(false);
+        // Load Sessions with timeout
+        try {
+          const sessionPromise = supabase
+            .from('sessions')
+            .select('*')
+            .eq('profile_id', profileData.id)
+            .order('date', { ascending: false });
 
-      // Load Sessions
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('profile_id', profileData.id)
-        .order('date', { ascending: false });
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Sessions load timeout')), 8000)
+          );
 
-      if (sessionData) {
-        setHistory(sessionData);
-        // Reconstruct preferred machines from history
-        const machines: Record<string, string[]> = {};
-        sessionData.forEach((s: any) => {
-          if (!machines[s.type]) {
-            machines[s.type] = s.exercises.map((e: any) => e.name);
+          const sessionResult = await Promise.race([sessionPromise, timeoutPromise]);
+          const sessionData = sessionResult.data;
+
+          if (sessionData) {
+            setHistory(sessionData);
+            // Reconstruct preferred machines from history
+            const machines: Record<string, string[]> = {};
+            sessionData.forEach((s: any) => {
+              if (!machines[s.type]) {
+                machines[s.type] = s.exercises.map((e: any) => e.name);
+              }
+            });
+            setPreferredMachines(machines);
           }
-        });
-        setPreferredMachines(machines);
+        } catch (sessionErr) {
+          console.error('Failed to load sessions:', sessionErr);
+        }
+
+        // Load Food Logs from Supabase with timeout
+        try {
+          const foodPromise = supabase
+            .from('food_logs')
+            .select('*')
+            .eq('profile_id', profileData.id)
+            .order('timestamp', { ascending: false });
+
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Food logs load timeout')), 8000)
+          );
+
+          const foodResult = await Promise.race([foodPromise, timeoutPromise]);
+          const foodData = foodResult.data;
+
+          if (foodData) {
+            setFoodLogs(foodData.map((f: any) => ({
+              id: f.id,
+              date: f.date,
+              timestamp: f.timestamp,
+              name: f.name,
+              calories: f.calories,
+              protein: f.protein,
+              carbs: f.carbs,
+              fat: f.fat,
+              amount: f.amount || f.grams,
+              unit: f.unit || 'g',
+              source: f.source
+            })));
+          }
+        } catch (foodErr) {
+          console.error('Failed to load food logs:', foodErr);
+        }
+
+        // Load Water Logs from Supabase with timeout
+        try {
+          const waterPromise = supabase
+            .from('water_logs')
+            .select('*')
+            .eq('profile_id', profileData.id)
+            .order('timestamp', { ascending: false });
+
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Water logs load timeout')), 8000)
+          );
+
+          const waterResult = await Promise.race([waterPromise, timeoutPromise]);
+          const waterData = waterResult.data;
+
+          if (waterData) {
+            setWaterLogs(waterData.map((w: any) => ({
+              id: w.id,
+              date: w.date,
+              timestamp: w.timestamp,
+              amount: w.amount
+            })));
+          }
+        } catch (waterErr) {
+          console.error('Failed to load water logs:', waterErr);
+        }
+      } else {
+        // No profile found for this user - needs setup
+        setNeedsProfileSetup(true);
       }
-
-      // Load Food Logs from Supabase
-      const { data: foodData, error: foodError } = await supabase
-        .from('food_logs')
-        .select('*')
-        .eq('profile_id', profileData.id)
-        .order('timestamp', { ascending: false });
-
-      if (foodData) {
-        setFoodLogs(foodData.map((f: any) => ({
-          id: f.id,
-          date: f.date,
-          timestamp: f.timestamp,
-          name: f.name,
-          calories: f.calories,
-          protein: f.protein,
-          carbs: f.carbs,
-          fat: f.fat,
-          amount: f.amount || f.grams,
-          unit: f.unit || 'g',
-          source: f.source
-        })));
-      }
-
-      // Load Water Logs from Supabase
-      const { data: waterData, error: waterError } = await supabase
-        .from('water_logs')
-        .select('*')
-        .eq('profile_id', profileData.id)
-        .order('timestamp', { ascending: false });
-
-      if (waterData) {
-        setWaterLogs(waterData.map((w: any) => ({
-          id: w.id,
-          date: w.date,
-          timestamp: w.timestamp,
-          amount: w.amount
-        })));
-      }
-    } else {
-      // No profile found for this user - needs setup
-      setNeedsProfileSetup(true);
+    } catch (err) {
+      console.error('Error in loadUserData:', err);
+      setIsLoading(false);
+      return;
     }
     setIsLoading(false);
   };
 
   const handleAuthSuccess = async (user: User) => {
     setAuthUser(user);
-    await loadUserData(user.id);
+    try {
+      await loadUserData(user.id);
+    } catch (err) {
+      console.error('Failed to load user data after auth:', err);
+      setIsLoading(false);
+    }
   };
 
   const handleProfileComplete = (newProfile: any) => {
