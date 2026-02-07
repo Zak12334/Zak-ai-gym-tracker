@@ -179,6 +179,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
               placeholder="Your name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              autoComplete="off"
               className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 font-bold text-white placeholder-slate-700 focus:border-blue-500 outline-none"
             />
           </div>
@@ -192,6 +193,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
             placeholder="your@email.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            autoComplete={isSignUp ? 'off' : 'email'}
             className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 font-bold text-white placeholder-slate-700 focus:border-blue-500 outline-none"
           />
         </div>
@@ -205,6 +207,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             minLength={6}
+            autoComplete={isSignUp ? 'new-password' : 'current-password'}
             className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 font-bold text-white placeholder-slate-700 focus:border-blue-500 outline-none"
           />
           {isSignUp && (
@@ -257,7 +260,16 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
         <div className="text-center">
           <button
             type="button"
-            onClick={() => { setIsSignUp(!isSignUp); setError(null); }}
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setError(null);
+              // Clear fields when switching to signup to prevent autofill confusion
+              if (!isSignUp) {
+                setEmail('');
+                setPassword('');
+                setName('');
+              }
+            }}
             className="text-slate-500 font-bold text-sm"
           >
             {isSignUp ? 'Already have an account? ' : "Don't have an account? "}

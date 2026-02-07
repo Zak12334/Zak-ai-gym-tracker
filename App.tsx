@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { WorkoutSession, DayType, Exercise, Set, UserProfile, FoodLog, WaterLog, NutritionGoals } from './types';
-import { getWorkoutForToday, generateUUID, formatDuration, calculateSmartTarget, getDaysSinceLastWorkoutType } from './utils';
+import { getWorkoutForToday, getWorkoutForUser, generateUUID, formatDuration, calculateSmartTarget, getDaysSinceLastWorkoutType } from './utils';
 import { SmartTargets } from './components/SmartTargets';
 import { NutritionView } from './components/NutritionView';
 import { BarcodeScanner } from './components/BarcodeScanner';
@@ -9,6 +9,7 @@ import { PhotoEstimator } from './components/PhotoEstimator';
 import { AuthView } from './components/AuthView';
 import { ProfileSetup } from './components/ProfileSetup';
 import { DEFAULT_EXERCISES } from './constants';
+import { getExercisesForWorkoutDay, getMuscleGroupsForWorkoutDay } from './splitExercises';
 import { SessionCard } from './components/SessionCard';
 import { generateMonthlyReport } from './services/geminiService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -39,15 +40,17 @@ const App: React.FC = () => {
   // Nutrition tracking state
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
   const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
-  const [nutritionGoals] = useState<NutritionGoals>({
-    calories: 2500,
-    protein: 180,
-    carbs: 250,
-    fat: 80,
-    water: 3000 // 3 liters
-  });
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showPhotoEstimator, setShowPhotoEstimator] = useState(false);
+
+  // Compute nutrition goals from profile (with fallbacks for existing users)
+  const nutritionGoals: NutritionGoals = {
+    calories: profile?.calorie_goal || 2500,
+    protein: profile?.protein_goal || 180,
+    carbs: Math.round((profile?.calorie_goal || 2500) * 0.4 / 4), // ~40% of calories
+    fat: Math.round((profile?.calorie_goal || 2500) * 0.25 / 9), // ~25% of calories
+    water: 3000 // 3 liters
+  };
 
   // Helper to persist active session to localStorage
   const persistActiveSession = (session: WorkoutSession | null) => {
@@ -77,7 +80,7 @@ const App: React.FC = () => {
         protein: food.protein,
         carbs: food.carbs,
         fat: food.fat,
-        grams: food.amount,
+        grams: food.amount, // Keep for backward compatibility with DB constraint
         amount: food.amount,
         unit: food.unit,
         source: food.source
@@ -161,14 +164,21 @@ const App: React.FC = () => {
 
   // Check for existing auth session on mount
   useEffect(() => {
+    let isMounted = true;
+    let hasLoaded = false;
+
     const checkAuth = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
+        if (!isMounted || hasLoaded) return;
+        hasLoaded = true;
+
         if (error) {
-          console.error('Auth error:', error);
+          console.error("Auth session error:", error);
           setIsLoading(false);
           return;
         }
+
         if (session?.user) {
           setAuthUser(session.user);
           try {
@@ -181,18 +191,34 @@ const App: React.FC = () => {
           setIsLoading(false);
         }
       } catch (err) {
-        console.error('Failed to check auth:', err);
-        setIsLoading(false);
+        console.error("Auth check failed:", err);
+        if (isMounted) setIsLoading(false);
       }
     };
 
     checkAuth();
 
-    // Listen for auth changes
+    // Safety timeout - never stay loading forever (max 10 seconds)
+    const timeout = setTimeout(() => {
+      if (isMounted && isLoading) {
+        console.warn("Loading timeout reached, forcing load complete");
+        setIsLoading(false);
+      }
+    }, 10000);
+
+    // Listen for auth changes (but ignore initial session which we handle above)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
+      // Skip INITIAL_SESSION as we handle it in checkAuth
+      if (event === 'INITIAL_SESSION') return;
+
       if (event === 'SIGNED_IN' && session?.user) {
         setAuthUser(session.user);
-        await loadUserData(session.user.id);
+        if (!hasLoaded) {
+          hasLoaded = true;
+          await loadUserData(session.user.id);
+        }
       } else if (event === 'SIGNED_OUT') {
         setAuthUser(null);
         setProfile(null);
@@ -200,10 +226,15 @@ const App: React.FC = () => {
         setFoodLogs([]);
         setWaterLogs([]);
         setNeedsProfileSetup(false);
+        setIsLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadUserData = async (userId: string) => {
@@ -226,143 +257,108 @@ const App: React.FC = () => {
         }
       }
 
-      // Check if Supabase is configured
-      const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || (globalThis as any).VITE_SUPABASE_URL;
-      const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || (globalThis as any).VITE_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseKey) {
-        console.warn('Supabase not configured - app will work with local data only');
-        setNeedsProfileSetup(true);
-        setIsLoading(false);
-        return;
-      }
-
-      // Load Profile for this user with timeout
-      const profilePromise = supabase
+      // Load Profile for this user
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
 
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Profile load timeout')), 5000)
-      );
+      if (profileError) {
+        console.error("Profile load error:", profileError);
+        // If RLS blocks us, try without user_id filter (fallback for migration)
+        const { data: fallbackProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .limit(1)
+          .maybeSingle();
 
-      let profileData, profileError;
-      try {
-        const result = await Promise.race([profilePromise, timeoutPromise]) as Awaited<typeof profilePromise>;
-        profileData = result.data;
-        profileError = result.error;
-      } catch (timeoutErr) {
-        console.error('Profile load timed out or failed:', timeoutErr);
-        profileData = null;
-        profileError = timeoutErr;
+        if (fallbackProfile) {
+          setProfile(fallbackProfile);
+          setNeedsProfileSetup(false);
+        } else {
+          setNeedsProfileSetup(true);
+        }
+        setIsLoading(false);
+        return;
       }
 
       if (profileData) {
         setProfile(profileData);
         setNeedsProfileSetup(false);
 
-        // Load Sessions with timeout
-        try {
-          const sessionPromise = supabase
-            .from('sessions')
-            .select('*')
-            .eq('profile_id', profileData.id)
-            .order('date', { ascending: false });
+        // Load Sessions
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('sessions')
+          .select('*')
+          .eq('profile_id', profileData.id)
+          .order('date', { ascending: false });
 
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Sessions load timeout')), 5000)
-          );
-
-          const sessionResult = await Promise.race([sessionPromise, timeoutPromise]) as Awaited<typeof sessionPromise>;
-          const sessionData = sessionResult.data;
-
-          if (sessionData) {
-            setHistory(sessionData);
-            // Reconstruct preferred machines from history
-            const machines: Record<string, string[]> = {};
-            sessionData.forEach((s: any) => {
-              if (!machines[s.type]) {
-                machines[s.type] = s.exercises.map((e: any) => e.name);
-              }
-            });
-            setPreferredMachines(machines);
-          }
-        } catch (sessionErr) {
-        console.warn('Failed to load sessions (using local data):', sessionErr);
+        if (sessionError) {
+          console.error("Sessions load error:", sessionError);
+        } else if (sessionData) {
+          setHistory(sessionData);
+          // Reconstruct preferred machines from history
+          const machines: Record<string, string[]> = {};
+          sessionData.forEach((s: any) => {
+            if (!machines[s.type]) {
+              machines[s.type] = s.exercises.map((e: any) => e.name);
+            }
+          });
+          setPreferredMachines(machines);
         }
 
-        // Load Food Logs from Supabase with timeout
-        try {
-          const foodPromise = supabase
-            .from('food_logs')
-            .select('*')
-            .eq('profile_id', profileData.id)
-            .order('timestamp', { ascending: false });
+        // Load Food Logs from Supabase
+        const { data: foodData, error: foodError } = await supabase
+          .from('food_logs')
+          .select('*')
+          .eq('profile_id', profileData.id)
+          .order('timestamp', { ascending: false });
 
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Food logs load timeout')), 5000)
-          );
-
-          const foodResult = await Promise.race([foodPromise, timeoutPromise]) as Awaited<typeof foodPromise>;
-          const foodData = foodResult.data;
-
-          if (foodData) {
-            setFoodLogs(foodData.map((f: any) => ({
-              id: f.id,
-              date: f.date,
-              timestamp: f.timestamp,
-              name: f.name,
-              calories: f.calories,
-              protein: f.protein,
-              carbs: f.carbs,
-              fat: f.fat,
-              amount: f.amount || f.grams,
-              unit: f.unit || 'g',
-              source: f.source
-            })));
-          }
-        } catch (foodErr) {
-          console.warn('Failed to load food logs (using local data):', foodErr);
+        if (foodError) {
+          console.error("Food logs load error:", foodError);
+        } else if (foodData) {
+          setFoodLogs(foodData.map((f: any) => ({
+            id: f.id,
+            date: f.date,
+            timestamp: f.timestamp,
+            name: f.name,
+            calories: f.calories,
+            protein: f.protein,
+            carbs: f.carbs,
+            fat: f.fat,
+            amount: f.amount || f.grams,
+            unit: f.unit || 'g',
+            source: f.source
+          })));
         }
 
-        // Load Water Logs from Supabase with timeout
-        try {
-          const waterPromise = supabase
-            .from('water_logs')
-            .select('*')
-            .eq('profile_id', profileData.id)
-            .order('timestamp', { ascending: false });
+        // Load Water Logs from Supabase
+        const { data: waterData, error: waterError } = await supabase
+          .from('water_logs')
+          .select('*')
+          .eq('profile_id', profileData.id)
+          .order('timestamp', { ascending: false });
 
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Water logs load timeout')), 5000)
-          );
-
-          const waterResult = await Promise.race([waterPromise, timeoutPromise]) as Awaited<typeof waterPromise>;
-          const waterData = waterResult.data;
-
-          if (waterData) {
-            setWaterLogs(waterData.map((w: any) => ({
-              id: w.id,
-              date: w.date,
-              timestamp: w.timestamp,
-              amount: w.amount
-            })));
-          }
-        } catch (waterErr) {
-          console.warn('Failed to load water logs (using local data):', waterErr);
+        if (waterError) {
+          console.error("Water logs load error:", waterError);
+        } else if (waterData) {
+          setWaterLogs(waterData.map((w: any) => ({
+            id: w.id,
+            date: w.date,
+            timestamp: w.timestamp,
+            amount: w.amount
+          })));
         }
       } else {
         // No profile found for this user - needs setup
         setNeedsProfileSetup(true);
       }
     } catch (err) {
-      console.error('Error in loadUserData:', err);
+      console.error("loadUserData failed:", err);
+    } finally {
       setIsLoading(false);
-      return;
     }
-    setIsLoading(false);
   };
 
   const handleAuthSuccess = async (user: User) => {
@@ -409,11 +405,21 @@ const App: React.FC = () => {
   }, [activeSession]);
 
   const startSession = () => {
-    const type = getWorkoutForToday();
+    const type = profile?.split_type ? getWorkoutForUser(profile) : getWorkoutForToday();
     const userDefined = preferredMachines[type];
-    const initialExerciseNames = (userDefined && userDefined.length > 0) 
-      ? userDefined 
-      : DEFAULT_EXERCISES[type as DayType] || [];
+
+    let initialExerciseNames: string[];
+
+    if (userDefined && userDefined.length > 0) {
+      // User has done this workout type before - use their preferred exercises
+      initialExerciseNames = userDefined;
+    } else if (profile?.split_type) {
+      // New user with a split - get exercises for their workout day
+      initialExerciseNames = getExercisesForWorkoutDay(type);
+    } else {
+      // Zak's profile - use original hardcoded defaults
+      initialExerciseNames = DEFAULT_EXERCISES[type as DayType] || [];
+    }
 
     const initialExercises = initialExerciseNames.map(name => {
       return {
@@ -434,7 +440,15 @@ const App: React.FC = () => {
     setTimer(0);
     setActiveSession(newSession);
     persistActiveSession(newSession);
-    setExpandedSections({ "Back": false, "Abs": false });
+
+    // Initialize expanded sections based on workout type
+    const muscleGroups = profile?.split_type ? getMuscleGroupsForWorkoutDay(type) : [];
+    const initialExpanded: Record<string, boolean> = {};
+    muscleGroups.forEach(mg => {
+      initialExpanded[mg.name] = false;
+    });
+    setExpandedSections(initialExpanded);
+
     setView('Active');
   };
 
@@ -677,7 +691,7 @@ const App: React.FC = () => {
 
   const fetchAiReport = async () => {
     if (history.length < 8) {
-      alert(`Zak, IronMind needs at least 8 sessions (2 weeks) to identify progression patterns. Progress: ${history.length}/8`);
+      alert(`${profile?.name || 'User'}, IronMind needs at least 8 sessions (2 weeks) to identify progression patterns. Progress: ${history.length}/8`);
       return;
     }
     setIsGeneratingReport(true);
@@ -688,7 +702,7 @@ const App: React.FC = () => {
   };
 
   const renderHome = () => {
-    const todayWorkout = getWorkoutForToday();
+    const todayWorkout = profile?.split_type ? getWorkoutForUser(profile) : getWorkoutForToday();
     const firstName = profile?.name || 'Zak';
     return (
       <div className="flex flex-col items-center justify-center min-h-[90vh] p-8 text-center animate-in fade-in duration-500 relative">
@@ -791,7 +805,8 @@ const App: React.FC = () => {
     if (!activeSession) return null;
 
     // Define muscle group sections for each workout type
-    const workoutSections: Record<string, { name: string; prefix: string; color: string }[]> = {
+    // For Zak's profile (no split_type), use hardcoded sections
+    const zakWorkoutSections: Record<string, { name: string; prefix: string; color: string }[]> = {
       [DayType.ChestTriceps]: [
         { name: 'Chest', prefix: 'chest:', color: '#ef4444' },
         { name: 'Triceps', prefix: 'triceps:', color: '#f97316' }
@@ -811,7 +826,22 @@ const App: React.FC = () => {
       ]
     };
 
-    const sections = workoutSections[activeSession.type] || [];
+    // Get sections - for users with split_type, use dynamic sections from splitExercises
+    let sections: { name: string; prefix: string; color: string }[];
+
+    if (profile?.split_type) {
+      // User has a split - get muscle groups dynamically
+      const muscleGroups = getMuscleGroupsForWorkoutDay(activeSession.type);
+      sections = muscleGroups.map(mg => ({
+        name: mg.name,
+        prefix: mg.name.toLowerCase() + ':',
+        color: mg.color
+      }));
+    } else {
+      // Zak's profile - use hardcoded sections
+      sections = zakWorkoutSections[activeSession.type] || [];
+    }
+
     const hasSections = sections.length > 0;
 
     // Helper to filter exercises by prefix

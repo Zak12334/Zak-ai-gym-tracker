@@ -50,14 +50,22 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 
 /**
  * Initialize the Supabase client.
- * We provide a fallback URL to prevent the 'supabaseUrl is required' error 
+ * We provide a fallback URL to prevent the 'supabaseUrl is required' error
  * during the constructor call. This allows the application to boot normally.
  * If these are placeholders, database requests will fail gracefully with a connection error
  * which is caught and handled in the App components.
  */
 const supabase = createClient(
   SUPABASE_URL || 'https://placeholder.supabase.co',
-  SUPABASE_ANON_KEY || 'placeholder'
+  SUPABASE_ANON_KEY || 'placeholder',
+  {
+    auth: {
+      persistSession: true, // Explicitly enable session persistence
+      storageKey: 'ironmind-auth', // Custom key for localStorage
+      autoRefreshToken: true, // Auto refresh before expiry
+      detectSessionInUrl: true, // Handle OAuth redirects
+    }
+  }
 );
 
 export default supabase;
