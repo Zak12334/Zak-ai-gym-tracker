@@ -679,7 +679,7 @@ const App: React.FC = () => {
 
   const fetchAiReport = async () => {
     if (history.length < 8) {
-      alert(`Zak, IronMind needs at least 8 sessions (2 weeks) to identify progression patterns. Progress: ${history.length}/8`);
+      alert(`${profile?.name || 'User'}, IronMind needs at least 8 sessions (2 weeks) to identify progression patterns. Progress: ${history.length}/8`);
       return;
     }
     setIsGeneratingReport(true);
