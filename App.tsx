@@ -9,6 +9,7 @@ import { PhotoEstimator } from './components/PhotoEstimator';
 import { AuthView } from './components/AuthView';
 import { ProfileSetup } from './components/ProfileSetup';
 import { DEFAULT_EXERCISES } from './constants';
+import { getExercisesForWorkoutDay, getMuscleGroupsForWorkoutDay } from './splitExercises';
 import { SessionCard } from './components/SessionCard';
 import { generateMonthlyReport } from './services/geminiService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -394,9 +395,19 @@ const App: React.FC = () => {
   const startSession = () => {
     const type = profile?.split_type ? getWorkoutForUser(profile) : getWorkoutForToday();
     const userDefined = preferredMachines[type];
-    const initialExerciseNames = (userDefined && userDefined.length > 0) 
-      ? userDefined 
-      : DEFAULT_EXERCISES[type as DayType] || [];
+
+    let initialExerciseNames: string[];
+
+    if (userDefined && userDefined.length > 0) {
+      // User has done this workout type before - use their preferred exercises
+      initialExerciseNames = userDefined;
+    } else if (profile?.split_type) {
+      // New user with a split - get exercises for their workout day
+      initialExerciseNames = getExercisesForWorkoutDay(type);
+    } else {
+      // Zak's profile - use original hardcoded defaults
+      initialExerciseNames = DEFAULT_EXERCISES[type as DayType] || [];
+    }
 
     const initialExercises = initialExerciseNames.map(name => {
       return {
@@ -417,7 +428,15 @@ const App: React.FC = () => {
     setTimer(0);
     setActiveSession(newSession);
     persistActiveSession(newSession);
-    setExpandedSections({ "Back": false, "Abs": false });
+
+    // Initialize expanded sections based on workout type
+    const muscleGroups = profile?.split_type ? getMuscleGroupsForWorkoutDay(type) : [];
+    const initialExpanded: Record<string, boolean> = {};
+    muscleGroups.forEach(mg => {
+      initialExpanded[mg.name] = false;
+    });
+    setExpandedSections(initialExpanded);
+
     setView('Active');
   };
 
@@ -774,7 +793,8 @@ const App: React.FC = () => {
     if (!activeSession) return null;
 
     // Define muscle group sections for each workout type
-    const workoutSections: Record<string, { name: string; prefix: string; color: string }[]> = {
+    // For Zak's profile (no split_type), use hardcoded sections
+    const zakWorkoutSections: Record<string, { name: string; prefix: string; color: string }[]> = {
       [DayType.ChestTriceps]: [
         { name: 'Chest', prefix: 'chest:', color: '#ef4444' },
         { name: 'Triceps', prefix: 'triceps:', color: '#f97316' }
@@ -794,7 +814,22 @@ const App: React.FC = () => {
       ]
     };
 
-    const sections = workoutSections[activeSession.type] || [];
+    // Get sections - for users with split_type, use dynamic sections from splitExercises
+    let sections: { name: string; prefix: string; color: string }[];
+
+    if (profile?.split_type) {
+      // User has a split - get muscle groups dynamically
+      const muscleGroups = getMuscleGroupsForWorkoutDay(activeSession.type);
+      sections = muscleGroups.map(mg => ({
+        name: mg.name,
+        prefix: mg.name.toLowerCase() + ':',
+        color: mg.color
+      }));
+    } else {
+      // Zak's profile - use hardcoded sections
+      sections = zakWorkoutSections[activeSession.type] || [];
+    }
+
     const hasSections = sections.length > 0;
 
     // Helper to filter exercises by prefix
