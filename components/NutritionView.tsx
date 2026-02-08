@@ -236,46 +236,98 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       </div>
 
       {/* Water Tracker */}
-      <div className="bg-slate-900/50 rounded-3xl p-4 border border-white/5 mb-6">
-        <div className="flex justify-between items-center mb-3">
+      <div className="bg-slate-900/50 rounded-3xl p-5 border border-white/5 mb-6">
+        <div className="flex justify-between items-start mb-4">
           <div>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Water</p>
-            <p className="text-2xl font-black text-cyan-400">{(totals.water / 1000).toFixed(1)}L <span className="text-sm text-slate-600">/ {goals.water / 1000}L</span></p>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">Water Intake</p>
+            <p className="text-3xl font-black text-cyan-400">
+              {(totals.water / 1000).toFixed(1)}
+              <span className="text-lg text-slate-500 font-bold">L</span>
+              <span className="text-sm text-slate-600 font-normal"> / {goals.water / 1000}L</span>
+            </p>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleAddWater(250)}
-              className="bg-cyan-900/30 text-cyan-400 px-3 py-2 rounded-xl text-xs font-black active:scale-95 transition-transform"
-            >
-              +250ml
-            </button>
-            <button
-              onClick={() => handleAddWater(500)}
-              className="bg-cyan-900/30 text-cyan-400 px-3 py-2 rounded-xl text-xs font-black active:scale-95 transition-transform"
-            >
-              +500ml
-            </button>
+          {/* Percentage circle */}
+          <div className="relative w-16 h-16">
+            <svg className="w-16 h-16 transform -rotate-90">
+              <circle cx="32" cy="32" r="28" stroke="#1e293b" strokeWidth="6" fill="none" />
+              <circle
+                cx="32" cy="32" r="28"
+                stroke="url(#waterGradient)"
+                strokeWidth="6"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray={`${progress.water * 1.76} 176`}
+                className="transition-all duration-500"
+              />
+              <defs>
+                <linearGradient id="waterGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#06b6d4" />
+                  <stop offset="100%" stopColor="#3b82f6" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-sm font-black text-cyan-400">
+              {Math.round(progress.water)}%
+            </span>
           </div>
         </div>
-        <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
+
+        {/* Quick Add Buttons */}
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          <button
+            onClick={() => handleAddWater(250)}
+            className="bg-cyan-900/40 hover:bg-cyan-900/60 text-cyan-400 py-4 rounded-2xl font-black text-sm active:scale-95 transition-all border border-cyan-800/30"
+          >
+            +250ml
+          </button>
+          <button
+            onClick={() => handleAddWater(500)}
+            className="bg-cyan-900/40 hover:bg-cyan-900/60 text-cyan-400 py-4 rounded-2xl font-black text-sm active:scale-95 transition-all border border-cyan-800/30"
+          >
+            +500ml
+          </button>
+          <button
+            onClick={() => handleAddWater(750)}
+            className="bg-cyan-900/40 hover:bg-cyan-900/60 text-cyan-400 py-4 rounded-2xl font-black text-sm active:scale-95 transition-all border border-cyan-800/30"
+          >
+            +750ml
+          </button>
+          <button
+            onClick={() => handleAddWater(1000)}
+            className="bg-cyan-900/40 hover:bg-cyan-900/60 text-cyan-400 py-4 rounded-2xl font-black text-sm active:scale-95 transition-all border border-cyan-800/30"
+          >
+            +1L
+          </button>
+        </div>
+
+        {/* Progress bar */}
+        <div className="h-3 bg-slate-800 rounded-full overflow-hidden mb-3">
           <div
             className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-500"
-            style={{ width: `${progress.water}%` }}
+            style={{ width: `${Math.min(progress.water, 100)}%` }}
           />
         </div>
-        {/* Water drops visualization */}
-        <div className="flex gap-1 mt-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className={`flex-1 h-6 rounded-full transition-all duration-300 ${
-                totals.water >= ((i + 1) * (goals.water / 8))
-                  ? 'bg-cyan-500'
-                  : 'bg-slate-800'
-              }`}
-            />
-          ))}
-        </div>
+
+        {/* Today's water logs with delete option */}
+        {todayWater.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {todayWater.slice(0, 6).map((log) => (
+              <button
+                key={log.id}
+                onClick={() => onDeleteWater(log.id)}
+                className="bg-slate-800/50 text-slate-400 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 hover:bg-red-900/30 hover:text-red-400 transition-colors group"
+              >
+                <span>{log.amount >= 1000 ? `${log.amount / 1000}L` : `${log.amount}ml`}</span>
+                <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            ))}
+            {todayWater.length > 6 && (
+              <span className="text-slate-600 text-xs font-bold px-2 py-1.5">+{todayWater.length - 6} more</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Add Food Buttons */}
