@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>IronMind Icon Generator</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #f97316; border: none; color: white; border-radius: 8px; }
+    .preview { display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0; }
+    .preview img { border: 1px solid #333; }
+    a { color: #f97316; }
+  </style>
+</head>
+<body>
+  <h1>IronMind PWA Icon Generator</h1>
+  <p>Click the button to generate PNG icons from the SVG, then download them.</p>
+
+  <button onclick="generateIcons()">Generate Icons</button>
+
+  <div class="preview" id="preview"></div>
+  <div id="downloads"></div>
+
+  <script>
+    const sizes = [192, 512];
+
+    async function generateIcons() {
+      const preview = document.getElementById('preview');
+      const downloads = document.getElementById('downloads');
+      preview.innerHTML = '';
+      downloads.innerHTML = '<h3>Download Links:</h3>';
+
+      // Load SVG
+      const response = await fetch('/icons/icon.svg');
+      const svgText = await response.text();
+      const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+      const svgUrl = URL.createObjectURL(svgBlob);
+
+      const img = new Image();
+      img.src = svgUrl;
+
+      img.onload = () => {
+        sizes.forEach(size => {
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, size, size);
+
+          // Show preview
+          const previewImg = document.createElement('img');
+          previewImg.src = canvas.toDataURL('image/png');
+          previewImg.width = Math.min(size, 128);
+          previewImg.title = `${size}x${size}`;
+          preview.appendChild(previewImg);
+
+          // Create download link
+          canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `icon-${size}x${size}.png`;
+            link.textContent = `Download icon-${size}x${size}.png`;
+            link.style.display = 'block';
+            link.style.margin = '5px 0';
+            downloads.appendChild(link);
+          }, 'image/png');
+        });
+
+        URL.revokeObjectURL(svgUrl);
+      };
+    }
+  </script>
+</body>
+</html>
