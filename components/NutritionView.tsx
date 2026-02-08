@@ -186,7 +186,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   };
 
   return (
-    <div className="p-6 pb-40 animate-in fade-in duration-500">
+    <div className="p-6 pb-40 animate-in fade-in duration-500" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)' }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">

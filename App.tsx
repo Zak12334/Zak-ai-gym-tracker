@@ -710,7 +710,7 @@ const App: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[90vh] p-8 text-center animate-in fade-in duration-500 relative">
         {/* Profile/Logout Menu */}
-        <div className="absolute top-4 right-4">
+        <div className="absolute right-4" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
           <button
             onClick={() => setShowLogoutMenu(!showLogoutMenu)}
             className="w-10 h-10 rounded-full bg-slate-900 border border-white/10 flex items-center justify-center text-white font-black text-sm uppercase"
@@ -901,8 +901,8 @@ const App: React.FC = () => {
     const otherExercises = getOtherExercises();
 
     return (
-      <div className="p-6 pb-48 animate-in slide-in-from-bottom-10 duration-500">
-        <div className="flex justify-between items-start mb-8 sticky top-0 bg-black/80 ios-blur py-4 z-20 -mx-6 px-6">
+      <div className="p-6 pb-48 animate-in slide-in-from-bottom-10 duration-500" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)' }}>
+        <div className="flex justify-between items-start mb-8 sticky bg-black/80 ios-blur py-4 z-20 -mx-6 px-6" style={{ top: 'env(safe-area-inset-top, 0px)' }}>
           <div className="flex items-center gap-3">
             <button onClick={() => setView('Home')} className="text-white bg-slate-900 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 active:bg-slate-800 flex-shrink-0">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
@@ -940,7 +940,7 @@ const App: React.FC = () => {
   };
 
   const renderHistory = () => (
-    <div className="p-6 pb-24 animate-in fade-in duration-500">
+    <div className="p-6 pb-24 animate-in fade-in duration-500" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)' }}>
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <button onClick={() => setView('Home')} className="text-white bg-slate-900 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 active:bg-slate-800">←</button>
@@ -955,7 +955,7 @@ const App: React.FC = () => {
   );
 
   const renderReport = () => (
-    <div className="p-6 pb-24 animate-in fade-in duration-500">
+    <div className="p-6 pb-24 animate-in fade-in duration-500" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)' }}>
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <button onClick={() => setView('Home')} className="text-white bg-slate-900 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 active:bg-slate-800">←</button>
@@ -1051,7 +1051,7 @@ const App: React.FC = () => {
     );
 
     return (
-      <div className="p-6 pb-24 animate-in fade-in duration-500">
+      <div className="p-6 pb-24 animate-in fade-in duration-500" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)' }}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button onClick={cancelEditSession} className="text-white bg-slate-900 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 active:bg-slate-800">←</button>
