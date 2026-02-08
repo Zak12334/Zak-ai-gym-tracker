@@ -44,12 +44,15 @@ const App: React.FC = () => {
   const [showPhotoEstimator, setShowPhotoEstimator] = useState(false);
 
   // Compute nutrition goals from profile (with fallbacks for existing users)
+  // Water goal: ~33ml per kg body weight (75kg = 2.5L, 90kg = 3L, 110kg = 3.6L)
+  const waterGoal = profile?.weight ? Math.round(profile.weight * 33 / 100) * 100 : 3000;
+
   const nutritionGoals: NutritionGoals = {
     calories: profile?.calorie_goal || 2500,
     protein: profile?.protein_goal || 180,
     carbs: Math.round((profile?.calorie_goal || 2500) * 0.4 / 4), // ~40% of calories
     fat: Math.round((profile?.calorie_goal || 2500) * 0.25 / 9), // ~25% of calories
-    water: 3000 // 3 liters
+    water: waterGoal
   };
 
   // Helper to persist active session to localStorage
