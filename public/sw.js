@@ -1,5 +1,5 @@
 // Version changes with each deployment - forces cache refresh
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const STATIC_CACHE = `ironmind-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `ironmind-dynamic-${CACHE_VERSION}`;
 
