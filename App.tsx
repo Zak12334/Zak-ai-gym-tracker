@@ -847,23 +847,42 @@ const App: React.FC = () => {
 
     const hasSections = sections.length > 0;
 
-    // Helper to filter exercises by section - checks if exercise name contains section name
-    const getExercisesForSection = (sectionName: string) => {
+    // Exercise keyword mappings for each muscle group (more specific to avoid overlap)
+    const exerciseKeywords: Record<string, string[]> = {
+      'chest': ['chest', 'bench', 'incline press', 'decline press', 'fly', 'flye', 'pec', 'dip', 'pushup', 'push-up', 'cable cross'],
+      'triceps': ['tricep', 'pushdown', 'push down', 'extension', 'skull', 'close grip', 'kickback'],
+      'back': ['back', 'lat', 'row', 'deadlift', 'pulldown', 'pull-down', 'pullup', 'pull-up', 'chin up', 'chinup'],
+      'biceps': ['bicep', 'curl', 'hammer', 'preacher', 'concentration'],
+      'shoulders': ['shoulder', 'delt', 'lateral raise', 'front raise', 'overhead press', 'military', 'shrug', 'arnold'],
+      'legs': ['leg', 'squat', 'lunge', 'quad', 'hamstring', 'glute', 'calf', 'calves', 'hip thrust'],
+      'abs': ['ab ', 'abs', 'core', 'crunch', 'plank', 'sit-up', 'situp', 'hanging'],
+      'forearms': ['forearm', 'wrist', 'grip'],
+      'rear delt': ['rear delt', 'reverse fly', 'face pull']
+    };
+
+    // Helper to check if exercise belongs to a section
+    const exerciseBelongsToSection = (exerciseName: string, sectionName: string): boolean => {
+      const nameLower = exerciseName.toLowerCase().trim();
       const sectionLower = sectionName.toLowerCase();
-      return activeSession.exercises.filter(e => {
-        const nameLower = e.name.toLowerCase().trim();
-        // Match if name contains the section name anywhere (e.g., "Chest Press" matches "Chest")
-        return nameLower.includes(sectionLower);
-      });
+
+      // Direct match - name contains section name
+      if (nameLower.includes(sectionLower)) return true;
+
+      // Check keywords for this section
+      const keywords = exerciseKeywords[sectionLower] || [];
+      return keywords.some(keyword => nameLower.includes(keyword));
+    };
+
+    // Helper to filter exercises by section
+    const getExercisesForSection = (sectionName: string) => {
+      return activeSession.exercises.filter(e => exerciseBelongsToSection(e.name, sectionName));
     };
 
     // Get exercises that don't match any section
     const getOtherExercises = () => {
       if (!hasSections) return activeSession.exercises;
       return activeSession.exercises.filter(e => {
-        const nameLower = e.name.toLowerCase().trim();
-        // Check if exercise matches ANY section
-        return !sections.some(s => nameLower.includes(s.name.toLowerCase()));
+        return !sections.some(s => exerciseBelongsToSection(e.name, s.name));
       });
     };
 
