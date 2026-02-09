@@ -33,7 +33,33 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [grams, setGrams] = useState<number>(0);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Handle keyboard visibility for iOS
+  useEffect(() => {
+    if (!showQuickAdd) return;
+
+    const handleResize = () => {
+      // On iOS, when keyboard opens, visualViewport height decreases
+      if (window.visualViewport) {
+        const isKeyboard = window.visualViewport.height < window.innerHeight * 0.75;
+        setKeyboardVisible(isKeyboard);
+      }
+    };
+
+    // Small delay to let modal animation complete before focusing
+    const focusTimer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 350);
+
+    window.visualViewport?.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(focusTimer);
+      window.visualViewport?.removeEventListener('resize', handleResize);
+    };
+  }, [showQuickAdd]);
 
   // Manual entry states
   const [isManualMode, setIsManualMode] = useState(false);
@@ -365,7 +391,11 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       {/* Quick Add Modal */}
       {showQuickAdd && (
         <div className="fixed inset-0 bg-black/80 z-[60] flex items-end animate-in fade-in duration-200">
-          <div className="w-full max-h-[85vh] bg-slate-900 rounded-t-3xl p-6 animate-in slide-in-from-bottom duration-300 overflow-y-auto">
+          <div
+            ref={modalRef}
+            className={`w-full bg-slate-900 rounded-t-3xl p-6 animate-in slide-in-from-bottom duration-300 overflow-y-auto transition-all ${keyboardVisible ? 'max-h-[50vh]' : 'max-h-[85vh]'}`}
+            style={{ paddingBottom: keyboardVisible ? '1rem' : '2rem' }}
+          >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-black uppercase">{isManualMode ? 'Manual Entry' : 'Quick Add'}</h3>
               <button onClick={resetQuickAdd} className="text-slate-500 p-2">
@@ -502,7 +532,6 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   onKeyDown={(e) => e.key === 'Enter' && handleQuickAdd()}
                   placeholder="250g chicken breast..."
                   className="w-full bg-slate-800 border border-white/10 rounded-2xl p-4 text-white font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500 mb-3"
-                  autoFocus
                 />
 
                 {/* Search Results */}
