@@ -301,14 +301,22 @@ const App: React.FC = () => {
           console.error("Sessions load error:", sessionError);
         } else if (sessionData) {
           setHistory(sessionData);
-          // Reconstruct preferred machines from history
+          // Reconstruct preferred machines from history (most recent session for each type)
           const machines: Record<string, string[]> = {};
           sessionData.forEach((s: any) => {
-            if (!machines[s.type]) {
-              machines[s.type] = s.exercises.map((e: any) => e.name);
+            // Only use first (most recent) session for each workout type
+            if (!machines[s.type] && s.exercises && Array.isArray(s.exercises)) {
+              // Filter out empty names and trim whitespace
+              const exerciseNames = s.exercises
+                .map((e: any) => e.name?.trim())
+                .filter((name: string) => name && name.length > 0);
+              if (exerciseNames.length > 0) {
+                machines[s.type] = exerciseNames;
+              }
             }
           });
           setPreferredMachines(machines);
+          console.log("Loaded preferred machines:", machines); // Debug log
         }
 
         // Load Food Logs from Supabase
