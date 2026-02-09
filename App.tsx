@@ -847,22 +847,29 @@ const App: React.FC = () => {
 
     const hasSections = sections.length > 0;
 
-    // Helper to filter exercises by prefix
-    const getExercisesForSection = (prefix: string) => {
-      return activeSession.exercises.filter(e => e.name.toLowerCase().startsWith(prefix));
+    // Helper to check if an exercise belongs to a section
+    const exerciseMatchesSection = (exerciseName: string, section: { name: string; prefix: string }) => {
+      const lower = exerciseName.toLowerCase();
+      const sectionName = section.name.toLowerCase();
+      // Match by prefix (e.g. "chest: bench press") or by containing the muscle group name (e.g. "iso lateral wide chest")
+      return lower.startsWith(section.prefix) || lower.includes(sectionName);
     };
 
-    // Get exercises that don't match any section prefix
+    // Helper to filter exercises for a section
+    const getExercisesForSection = (section: { name: string; prefix: string }) => {
+      return activeSession.exercises.filter(e => exerciseMatchesSection(e.name, section));
+    };
+
+    // Get exercises that don't match any section
     const getOtherExercises = () => {
       if (!hasSections) return activeSession.exercises;
-      const allPrefixes = sections.map(s => s.prefix);
       return activeSession.exercises.filter(e =>
-        !allPrefixes.some(prefix => e.name.toLowerCase().startsWith(prefix))
+        !sections.some(section => exerciseMatchesSection(e.name, section))
       );
     };
 
     const renderSection = (section: { name: string; prefix: string; color: string }) => {
-      const sectionExercises = getExercisesForSection(section.prefix);
+      const sectionExercises = getExercisesForSection(section);
       const isExpanded = expandedSections[section.name] ?? false;
 
       return (
