@@ -658,6 +658,27 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         </div>
       )}
 
+      {/* Macros breakdown */}
+      {todayFoods.length > 0 && (
+        <div className="bg-slate-900/30 rounded-2xl p-4 border border-white/5 mb-6">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Macro Breakdown</h3>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-2xl font-black text-green-400">{Math.round(totals.carbs)}g</p>
+              <p className="text-[10px] text-slate-500 uppercase">Carbs</p>
+            </div>
+            <div>
+              <p className="text-2xl font-black text-blue-400">{Math.round(totals.protein)}g</p>
+              <p className="text-[10px] text-slate-500 uppercase">Protein</p>
+            </div>
+            <div>
+              <p className="text-2xl font-black text-yellow-400">{Math.round(totals.fat)}g</p>
+              <p className="text-[10px] text-slate-500 uppercase">Fat</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Today's Food Log */}
       <div className="mb-6">
         <h3 className="text-sm font-black uppercase tracking-widest text-slate-500 mb-3">Today's Log</h3>
@@ -691,27 +712,6 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           </div>
         )}
       </div>
-
-      {/* Macros breakdown */}
-      {todayFoods.length > 0 && (
-        <div className="bg-slate-900/30 rounded-2xl p-4 border border-white/5">
-          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Macro Breakdown</h3>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-black text-green-400">{Math.round(totals.carbs)}g</p>
-              <p className="text-[10px] text-slate-500 uppercase">Carbs</p>
-            </div>
-            <div>
-              <p className="text-2xl font-black text-blue-400">{Math.round(totals.protein)}g</p>
-              <p className="text-[10px] text-slate-500 uppercase">Protein</p>
-            </div>
-            <div>
-              <p className="text-2xl font-black text-yellow-400">{Math.round(totals.fat)}g</p>
-              <p className="text-[10px] text-slate-500 uppercase">Fat</p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
