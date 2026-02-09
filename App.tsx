@@ -847,29 +847,28 @@ const App: React.FC = () => {
 
     const hasSections = sections.length > 0;
 
-    // Helper to check if an exercise belongs to a section
-    const exerciseMatchesSection = (exerciseName: string, section: { name: string; prefix: string }) => {
-      const lower = exerciseName.toLowerCase();
-      const sectionName = section.name.toLowerCase();
-      // Match by prefix (e.g. "chest: bench press") or by containing the muscle group name (e.g. "iso lateral wide chest")
-      return lower.startsWith(section.prefix) || lower.includes(sectionName);
-    };
-
-    // Helper to filter exercises for a section
-    const getExercisesForSection = (section: { name: string; prefix: string }) => {
-      return activeSession.exercises.filter(e => exerciseMatchesSection(e.name, section));
+    // Helper to filter exercises by section - checks if exercise name contains section name
+    const getExercisesForSection = (sectionName: string) => {
+      const sectionLower = sectionName.toLowerCase();
+      return activeSession.exercises.filter(e => {
+        const nameLower = e.name.toLowerCase().trim();
+        // Match if name contains the section name anywhere (e.g., "Chest Press" matches "Chest")
+        return nameLower.includes(sectionLower);
+      });
     };
 
     // Get exercises that don't match any section
     const getOtherExercises = () => {
       if (!hasSections) return activeSession.exercises;
-      return activeSession.exercises.filter(e =>
-        !sections.some(section => exerciseMatchesSection(e.name, section))
-      );
+      return activeSession.exercises.filter(e => {
+        const nameLower = e.name.toLowerCase().trim();
+        // Check if exercise matches ANY section
+        return !sections.some(s => nameLower.includes(s.name.toLowerCase()));
+      });
     };
 
     const renderSection = (section: { name: string; prefix: string; color: string }) => {
-      const sectionExercises = getExercisesForSection(section);
+      const sectionExercises = getExercisesForSection(section.name);
       const isExpanded = expandedSections[section.name] ?? false;
 
       return (
