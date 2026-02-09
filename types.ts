@@ -10,6 +10,7 @@ export interface Exercise {
   id: string;
   name: string;
   sets: Set[];
+  muscleGroup?: string; // Track which section this exercise belongs to
 }
 
 export interface WorkoutSession {

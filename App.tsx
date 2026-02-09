@@ -491,13 +491,14 @@ const App: React.FC = () => {
     });
   };
 
-  const addExercise = (prefix: string = "") => {
+  const addExercise = (muscleGroup: string = "") => {
     setActiveSession(prev => {
       if (!prev) return null;
       const newEx = {
         id: generateUUID(),
-        name: prefix ? `${prefix}: ` : '',
-        sets: []
+        name: muscleGroup ? `${muscleGroup}: ` : '',
+        sets: [],
+        muscleGroup: muscleGroup || undefined // Track which section it belongs to
       };
       const updated = {
         ...prev,
@@ -861,9 +862,19 @@ const App: React.FC = () => {
     };
 
     // Helper to check if exercise belongs to a section
-    const exerciseBelongsToSection = (exerciseName: string, sectionName: string): boolean => {
-      const nameLower = exerciseName.toLowerCase().trim();
+    const exerciseBelongsToSection = (exercise: { name: string; muscleGroup?: string }, sectionName: string): boolean => {
+      // If exercise has a muscleGroup set, use that (highest priority)
+      if (exercise.muscleGroup) {
+        return exercise.muscleGroup.toLowerCase() === sectionName.toLowerCase();
+      }
+
+      const nameLower = exercise.name.toLowerCase().trim();
       const sectionLower = sectionName.toLowerCase();
+
+      // If name starts with section prefix like "Chest: " or "Chest:", always match
+      if (nameLower.startsWith(sectionLower + ':') || nameLower.startsWith(sectionLower + ': ')) {
+        return true;
+      }
 
       // Direct match - name contains section name
       if (nameLower.includes(sectionLower)) return true;
@@ -875,14 +886,17 @@ const App: React.FC = () => {
 
     // Helper to filter exercises by section
     const getExercisesForSection = (sectionName: string) => {
-      return activeSession.exercises.filter(e => exerciseBelongsToSection(e.name, sectionName));
+      return activeSession.exercises.filter(e => exerciseBelongsToSection(e, sectionName));
     };
 
     // Get exercises that don't match any section
     const getOtherExercises = () => {
       if (!hasSections) return activeSession.exercises;
       return activeSession.exercises.filter(e => {
-        return !sections.some(s => exerciseBelongsToSection(e.name, s.name));
+        // If exercise has muscleGroup set, it belongs to that section, not "Other"
+        if (e.muscleGroup) return false;
+
+        return !sections.some(s => exerciseBelongsToSection(e, s.name));
       });
     };
 
