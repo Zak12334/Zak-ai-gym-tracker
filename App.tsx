@@ -708,7 +708,11 @@ const App: React.FC = () => {
     }
     setIsGeneratingReport(true);
     setView('Report');
-    const report = await generateMonthlyReport(history, profile);
+    const report = await generateMonthlyReport(history, profile, {
+      foodLogs,
+      waterLogs,
+      goals: nutritionGoals
+    });
     setAiReport(report);
     setIsGeneratingReport(false);
   };
