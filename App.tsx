@@ -856,40 +856,19 @@ const App: React.FC = () => {
 
     const hasSections = sections.length > 0;
 
-    // Exercise keyword mappings for each muscle group (more specific to avoid overlap)
-    const exerciseKeywords: Record<string, string[]> = {
-      'chest': ['chest', 'bench', 'incline press', 'decline press', 'fly', 'flye', 'pec', 'dip', 'pushup', 'push-up', 'cable cross'],
-      'triceps': ['tricep', 'pushdown', 'push down', 'extension', 'skull', 'close grip', 'kickback'],
-      'back': ['back', 'lat', 'row', 'deadlift', 'pulldown', 'pull-down', 'pullup', 'pull-up', 'chin up', 'chinup'],
-      'biceps': ['bicep', 'curl', 'hammer', 'preacher', 'concentration'],
-      'shoulders': ['shoulder', 'delt', 'lateral raise', 'front raise', 'overhead press', 'military', 'shrug', 'arnold'],
-      'legs': ['leg', 'squat', 'lunge', 'quad', 'hamstring', 'glute', 'calf', 'calves', 'hip thrust'],
-      'abs': ['ab ', 'abs', 'core', 'crunch', 'plank', 'sit-up', 'situp', 'hanging'],
-      'forearms': ['forearm', 'wrist', 'grip'],
-      'rear delt': ['rear delt', 'reverse fly', 'face pull']
-    };
-
-    // Helper to check if exercise belongs to a section
+    // Simple check: exercise belongs to section if muscleGroup matches OR name starts with section prefix
+    // NO keyword guessing - user decides where exercises go
     const exerciseBelongsToSection = (exercise: { name: string; muscleGroup?: string }, sectionName: string): boolean => {
-      // If exercise has a muscleGroup set, use that (highest priority)
-      if (exercise.muscleGroup) {
-        return exercise.muscleGroup.toLowerCase() === sectionName.toLowerCase();
-      }
-
-      const nameLower = exercise.name.toLowerCase().trim();
       const sectionLower = sectionName.toLowerCase();
 
-      // If name starts with section prefix like "Chest: " or "Chest:", always match
-      if (nameLower.startsWith(sectionLower + ':') || nameLower.startsWith(sectionLower + ': ')) {
-        return true;
+      // 1. If exercise has muscleGroup set (was added to this section), use that
+      if (exercise.muscleGroup) {
+        return exercise.muscleGroup.toLowerCase() === sectionLower;
       }
 
-      // Direct match - name contains section name
-      if (nameLower.includes(sectionLower)) return true;
-
-      // Check keywords for this section
-      const keywords = exerciseKeywords[sectionLower] || [];
-      return keywords.some(keyword => nameLower.includes(keyword));
+      // 2. Check if name starts with section prefix like "Triceps:" or "Triceps: "
+      const nameLower = exercise.name.toLowerCase().trim();
+      return nameLower.startsWith(sectionLower + ':') || nameLower.startsWith(sectionLower + ': ');
     };
 
     // Helper to filter exercises by section
@@ -901,9 +880,9 @@ const App: React.FC = () => {
     const getOtherExercises = () => {
       if (!hasSections) return activeSession.exercises;
       return activeSession.exercises.filter(e => {
-        // If exercise has muscleGroup set, it belongs to that section, not "Other"
+        // If exercise has muscleGroup set, it belongs to that section
         if (e.muscleGroup) return false;
-
+        // Otherwise check if it matches any section by prefix
         return !sections.some(s => exerciseBelongsToSection(e, s.name));
       });
     };
