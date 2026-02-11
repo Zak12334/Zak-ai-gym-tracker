@@ -33,7 +33,7 @@ const App: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showLogoutMenu, setShowLogoutMenu] = useState(false);
 
-  const [preferredMachines, setPreferredMachines] = useState<Record<string, string[]>>({});
+  const [preferredMachines, setPreferredMachines] = useState<Record<string, {name: string, muscleGroup?: string}[]>>({});
   const [editingSession, setEditingSession] = useState<WorkoutSession | null>(null);
   const timerRef = useRef<number | null>(null);
 
@@ -302,16 +302,16 @@ const App: React.FC = () => {
         } else if (sessionData) {
           setHistory(sessionData);
           // Reconstruct preferred machines from history (most recent session for each type)
-          const machines: Record<string, string[]> = {};
+          const machines: Record<string, {name: string, muscleGroup?: string}[]> = {};
           sessionData.forEach((s: any) => {
             // Only use first (most recent) session for each workout type
             if (!machines[s.type] && s.exercises && Array.isArray(s.exercises)) {
-              // Filter out empty names and trim whitespace
-              const exerciseNames = s.exercises
-                .map((e: any) => e.name?.trim())
-                .filter((name: string) => name && name.length > 0);
-              if (exerciseNames.length > 0) {
-                machines[s.type] = exerciseNames;
+              // Filter out empty names and preserve muscleGroup
+              const exerciseInfo = s.exercises
+                .filter((e: any) => e.name?.trim() && e.name.trim().length > 0)
+                .map((e: any) => ({ name: e.name.trim(), muscleGroup: e.muscleGroup }));
+              if (exerciseInfo.length > 0) {
+                machines[s.type] = exerciseInfo;
               }
             }
           });
@@ -419,42 +419,95 @@ const App: React.FC = () => {
     const type = profile?.split_type ? getWorkoutForUser(profile) : getWorkoutForToday();
     const userDefined = preferredMachines[type];
 
-    let initialExerciseNames: string[];
-
-    if (userDefined && userDefined.length > 0) {
-      // User has done this workout type before - use their preferred exercises
-      initialExerciseNames = userDefined;
-    } else if (profile?.split_type) {
-      // New user with a split - get exercises for their workout day
-      initialExerciseNames = getExercisesForWorkoutDay(type);
-    } else {
-      // Zak's profile - use original hardcoded defaults
-      initialExerciseNames = DEFAULT_EXERCISES[type as DayType] || [];
-    }
-
     // Get muscle groups for this workout type to detect muscleGroup from name prefix
     const workoutMuscleGroups = profile?.split_type ? getMuscleGroupsForWorkoutDay(type) : [];
 
-    const initialExercises = initialExerciseNames.map(name => {
-      // Detect muscleGroup from name prefix (e.g., "Biceps: Hammer Curl" → "Biceps")
-      let detectedMuscleGroup: string | undefined;
+    let initialExercises: { id: string; name: string; sets: any[]; muscleGroup?: string }[];
+
+    // Unambiguous exercise keywords (only for exercises that ONLY belong to one muscle group)
+    const unambiguousKeywords: Record<string, string> = {
+      'lateral raise': 'Shoulders',
+      'front raise': 'Shoulders',
+      'shrug': 'Shoulders',
+      'face pull': 'Rear Delts',
+      'reverse fly': 'Rear Delts',
+      'lat pulldown': 'Back',
+      'pull-up': 'Back',
+      'pullup': 'Back',
+      'deadlift': 'Back',
+      'barbell row': 'Back',
+      'preacher curl': 'Biceps',
+      'hammer curl': 'Biceps',
+      'bicep curl': 'Biceps',
+      'tricep pushdown': 'Triceps',
+      'skull crusher': 'Triceps',
+      'overhead extension': 'Triceps',
+      'leg press': 'Quads',
+      'leg extension': 'Quads',
+      'squat': 'Quads',
+      'lunge': 'Quads',
+      'leg curl': 'Hamstrings',
+      'romanian deadlift': 'Hamstrings',
+      'calf raise': 'Calves',
+      'crunch': 'Abs',
+      'plank': 'Abs',
+      'sit-up': 'Abs',
+    };
+
+    const detectMuscleGroup = (name: string): string | undefined => {
       const nameLower = name.toLowerCase().trim();
 
+      // First check prefix format
       for (const mg of workoutMuscleGroups) {
         const mgNameLower = mg.name.toLowerCase();
         if (nameLower.startsWith(mgNameLower + ':') || nameLower.startsWith(mgNameLower + ': ')) {
-          detectedMuscleGroup = mg.name; // Use exact name from muscle group object
-          break;
+          return mg.name;
         }
       }
 
-      return {
+      // Then check unambiguous keywords (only if this muscle group is in the current workout)
+      for (const [keyword, mgName] of Object.entries(unambiguousKeywords)) {
+        if (nameLower.includes(keyword)) {
+          // Only assign if this muscle group is actually in this workout
+          const matchingMg = workoutMuscleGroups.find(mg => mg.name.toLowerCase() === mgName.toLowerCase());
+          if (matchingMg) {
+            return matchingMg.name;
+          }
+        }
+      }
+
+      return undefined;
+    };
+
+    if (userDefined && userDefined.length > 0) {
+      // User has done this workout type before - use their preferred exercises with muscleGroup preserved
+      initialExercises = userDefined.map(ex => {
+        // If muscleGroup is already set, use it; otherwise try to detect
+        const muscleGroup = ex.muscleGroup || detectMuscleGroup(ex.name);
+        return {
+          id: generateUUID(),
+          name: ex.name,
+          sets: [],
+          muscleGroup
+        };
+      });
+    } else {
+      // Get default exercise names
+      let defaultNames: string[];
+      if (profile?.split_type) {
+        defaultNames = getExercisesForWorkoutDay(type);
+      } else {
+        defaultNames = DEFAULT_EXERCISES[type as DayType] || [];
+      }
+
+      // Create exercises with muscleGroup detected from name
+      initialExercises = defaultNames.map(name => ({
         id: generateUUID(),
         name,
-        sets: [],  // Start fresh - don't pre-fill sets from previous sessions
-        muscleGroup: detectedMuscleGroup
-      };
-    });
+        sets: [],
+        muscleGroup: detectMuscleGroup(name)
+      }));
+    }
 
     const newSession: WorkoutSession = {
       id: generateUUID(),
@@ -638,10 +691,12 @@ const App: React.FC = () => {
       setIsSaving(false);
     } else {
       setHistory(prev => [data, ...prev]);
-      // Update preferred machines cache
-      const namesUsed = activeSession.exercises.map(e => e.name.trim()).filter(n => n !== "");
-      if (namesUsed.length > 0) {
-        setPreferredMachines(prev => ({ ...prev, [activeSession.type]: namesUsed }));
+      // Update preferred machines cache with muscleGroup info
+      const exercisesUsed = activeSession.exercises
+        .filter(e => e.name.trim() !== "")
+        .map(e => ({ name: e.name.trim(), muscleGroup: e.muscleGroup }));
+      if (exercisesUsed.length > 0) {
+        setPreferredMachines(prev => ({ ...prev, [activeSession.type]: exercisesUsed }));
       }
       setActiveSession(null);
       persistActiveSession(null);
