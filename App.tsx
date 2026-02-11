@@ -419,8 +419,9 @@ const App: React.FC = () => {
     const type = profile?.split_type ? getWorkoutForUser(profile) : getWorkoutForToday();
     const userDefined = preferredMachines[type];
 
-    // Get muscle groups for this workout type to detect muscleGroup from name prefix
-    const workoutMuscleGroups = profile?.split_type ? getMuscleGroupsForWorkoutDay(type) : [];
+    // Get muscle groups for this workout type to detect muscleGroup from name
+    // Always try to get muscle groups, even for Zak's profile without split_type
+    const workoutMuscleGroups = getMuscleGroupsForWorkoutDay(type);
 
     let initialExercises: { id: string; name: string; sets: any[]; muscleGroup?: string }[];
 
@@ -439,6 +440,8 @@ const App: React.FC = () => {
       'preacher curl': 'Biceps',
       'hammer curl': 'Biceps',
       'bicep curl': 'Biceps',
+      'cable curl': 'Biceps',
+      'curl': 'Biceps',
       'tricep pushdown': 'Triceps',
       'skull crusher': 'Triceps',
       'overhead extension': 'Triceps',
