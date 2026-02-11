@@ -725,6 +725,18 @@ const App: React.FC = () => {
     });
   };
 
+  const updateExerciseNameInEdit = (exerciseId: string, newName: string) => {
+    setEditingSession(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        exercises: prev.exercises.map(ex =>
+          ex.id === exerciseId ? { ...ex, name: newName } : ex
+        )
+      };
+    });
+  };
+
   const removeSetFromEdit = (exerciseId: string, setId: string) => {
     setEditingSession(prev => {
       if (!prev) return null;
@@ -1190,9 +1202,15 @@ const App: React.FC = () => {
 
         {editingSession.exercises.map((ex) => (
           <div key={ex.id} className="bg-slate-950 rounded-3xl p-5 mb-4 border border-white/10 shadow-xl">
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-lg font-black text-white">{ex.name || 'Unnamed Exercise'}</span>
-              <button onClick={() => removeExerciseFromEdit(ex.id)} className="text-red-500 bg-red-950/30 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider active:bg-red-900">Remove</button>
+            <div className="flex justify-between items-center gap-3 mb-4">
+              <input
+                type="text"
+                value={ex.name}
+                onChange={(e) => updateExerciseNameInEdit(ex.id, e.target.value)}
+                placeholder="Exercise name"
+                className="flex-1 text-lg font-black text-white bg-transparent border-b border-white/20 focus:border-blue-500 focus:outline-none pb-1"
+              />
+              <button onClick={() => removeExerciseFromEdit(ex.id)} className="text-red-500 bg-red-950/30 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider active:bg-red-900 shrink-0">Remove</button>
             </div>
 
             <div className="space-y-2">
