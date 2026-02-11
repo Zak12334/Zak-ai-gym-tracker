@@ -432,11 +432,27 @@ const App: React.FC = () => {
       initialExerciseNames = DEFAULT_EXERCISES[type as DayType] || [];
     }
 
+    // Get muscle groups for this workout type to detect muscleGroup from name prefix
+    const workoutMuscleGroups = profile?.split_type ? getMuscleGroupsForWorkoutDay(type) : [];
+
     const initialExercises = initialExerciseNames.map(name => {
+      // Detect muscleGroup from name prefix (e.g., "Biceps: Hammer Curl" → "Biceps")
+      let detectedMuscleGroup: string | undefined;
+      const nameLower = name.toLowerCase().trim();
+
+      for (const mg of workoutMuscleGroups) {
+        const mgNameLower = mg.name.toLowerCase();
+        if (nameLower.startsWith(mgNameLower + ':') || nameLower.startsWith(mgNameLower + ': ')) {
+          detectedMuscleGroup = mg.name; // Use exact name from muscle group object
+          break;
+        }
+      }
+
       return {
         id: generateUUID(),
         name,
-        sets: []  // Start fresh - don't pre-fill sets from previous sessions
+        sets: [],  // Start fresh - don't pre-fill sets from previous sessions
+        muscleGroup: detectedMuscleGroup
       };
     });
 
