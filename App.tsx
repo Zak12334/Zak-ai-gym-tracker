@@ -419,63 +419,20 @@ const App: React.FC = () => {
     const type = profile?.split_type ? getWorkoutForUser(profile) : getWorkoutForToday();
     const userDefined = preferredMachines[type];
 
-    // Get muscle groups for this workout type to detect muscleGroup from name
-    // Always try to get muscle groups, even for Zak's profile without split_type
+    // Get muscle groups for this workout type to detect muscleGroup from prefix
     const workoutMuscleGroups = getMuscleGroupsForWorkoutDay(type);
 
     let initialExercises: { id: string; name: string; sets: any[]; muscleGroup?: string }[];
 
-    // Unambiguous exercise keywords (only for exercises that ONLY belong to one muscle group)
-    const unambiguousKeywords: Record<string, string> = {
-      'lateral raise': 'Shoulders',
-      'front raise': 'Shoulders',
-      'shrug': 'Shoulders',
-      'face pull': 'Rear Delts',
-      'reverse fly': 'Rear Delts',
-      'lat pulldown': 'Back',
-      'pull-up': 'Back',
-      'pullup': 'Back',
-      'deadlift': 'Back',
-      'barbell row': 'Back',
-      'preacher curl': 'Biceps',
-      'hammer curl': 'Biceps',
-      'bicep curl': 'Biceps',
-      'cable curl': 'Biceps',
-      'curl': 'Biceps',
-      'tricep pushdown': 'Triceps',
-      'skull crusher': 'Triceps',
-      'overhead extension': 'Triceps',
-      'leg press': 'Quads',
-      'leg extension': 'Quads',
-      'squat': 'Quads',
-      'lunge': 'Quads',
-      'leg curl': 'Hamstrings',
-      'romanian deadlift': 'Hamstrings',
-      'calf raise': 'Calves',
-      'crunch': 'Abs',
-      'plank': 'Abs',
-      'sit-up': 'Abs',
-    };
-
-    const detectMuscleGroup = (name: string): string | undefined => {
+    // Only detect muscleGroup from prefix format (e.g., "Chest:", "Triceps:")
+    // No keyword guessing - user has full control
+    const detectMuscleGroupFromPrefix = (name: string): string | undefined => {
       const nameLower = name.toLowerCase().trim();
 
-      // First check prefix format
       for (const mg of workoutMuscleGroups) {
         const mgNameLower = mg.name.toLowerCase();
         if (nameLower.startsWith(mgNameLower + ':') || nameLower.startsWith(mgNameLower + ': ')) {
           return mg.name;
-        }
-      }
-
-      // Then check unambiguous keywords (only if this muscle group is in the current workout)
-      for (const [keyword, mgName] of Object.entries(unambiguousKeywords)) {
-        if (nameLower.includes(keyword)) {
-          // Only assign if this muscle group is actually in this workout
-          const matchingMg = workoutMuscleGroups.find(mg => mg.name.toLowerCase() === mgName.toLowerCase());
-          if (matchingMg) {
-            return matchingMg.name;
-          }
         }
       }
 
@@ -485,8 +442,8 @@ const App: React.FC = () => {
     if (userDefined && userDefined.length > 0) {
       // User has done this workout type before - use their preferred exercises with muscleGroup preserved
       initialExercises = userDefined.map(ex => {
-        // If muscleGroup is already set, use it; otherwise try to detect
-        const muscleGroup = ex.muscleGroup || detectMuscleGroup(ex.name);
+        // If muscleGroup is already set, use it; otherwise try to detect from prefix
+        const muscleGroup = ex.muscleGroup || detectMuscleGroupFromPrefix(ex.name);
         return {
           id: generateUUID(),
           name: ex.name,
@@ -503,12 +460,12 @@ const App: React.FC = () => {
         defaultNames = DEFAULT_EXERCISES[type as DayType] || [];
       }
 
-      // Create exercises with muscleGroup detected from name
+      // Create exercises with muscleGroup detected from prefix only
       initialExercises = defaultNames.map(name => ({
         id: generateUUID(),
         name,
         sets: [],
-        muscleGroup: detectMuscleGroup(name)
+        muscleGroup: detectMuscleGroupFromPrefix(name)
       }));
     }
 
