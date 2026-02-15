@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { WorkoutSession, DayType, Exercise, Set, UserProfile, FoodLog, WaterLog, NutritionGoals } from './types';
+import { WorkoutSession, DayType, Exercise, Set, UserProfile, FoodLog, WaterLog, NutritionGoals, SplitType, PRESET_SPLITS } from './types';
 import { getWorkoutForToday, getWorkoutForUser, generateUUID, formatDuration, calculateSmartTarget, getDaysSinceLastWorkoutType } from './utils';
 import { SmartTargets } from './components/SmartTargets';
 import { NutritionView } from './components/NutritionView';
@@ -42,6 +42,13 @@ const App: React.FC = () => {
   const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showPhotoEstimator, setShowPhotoEstimator] = useState(false);
+
+  // Admin split editor state
+  const [splitEditing, setSplitEditing] = useState(false);
+  const [editSplitType, setEditSplitType] = useState<'zak' | SplitType>('zak');
+  const [editSplitDays, setEditSplitDays] = useState<string[]>(['Day 1', 'Day 2', 'Day 3']);
+  const [editSplitRestPattern, setEditSplitRestPattern] = useState(3);
+  const [editSplitStartDay, setEditSplitStartDay] = useState(0);
 
   // Compute nutrition goals from profile (with fallbacks for existing users)
   // Custom goals take priority over calculated goals if set
@@ -441,6 +448,30 @@ const App: React.FC = () => {
       alert('Failed to update goals');
     } else {
       setProfile(prev => prev ? { ...prev, ...goals } : null);
+    }
+  };
+
+  const updateSplit = async (splitData: {
+    split_type: string | null;
+    split_days: string[] | null;
+    split_rest_pattern: number | null;
+    split_current_day_index: number | null;
+    split_start_date: string | null;
+  }) => {
+    if (!profile?.id) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(splitData)
+      .eq('id', profile.id);
+
+    if (error) {
+      console.error('Error updating split:', error);
+      alert('Failed to update split');
+    } else {
+      setProfile((prev: any) => prev ? { ...prev, ...splitData } : null);
+      // Clear preferred machines so new split exercises take effect
+      setPreferredMachines({});
     }
   };
 
@@ -1259,6 +1290,232 @@ const App: React.FC = () => {
           <p className="text-xs text-slate-600 mt-4">
             Leave blank to use calculated goals based on your profile. Custom goals help if you know your actual needs differ from estimates.
           </p>
+        </div>
+
+        {/* Admin: Workout Split Section */}
+        <div className="bg-slate-900/30 rounded-3xl p-5 border border-white/10 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-black text-white">Workout Split</h3>
+              <p className="text-xs text-slate-500">
+                Current: <span className="text-white font-bold">
+                  {!profile?.split_type ? 'Zak Split (Original)' :
+                   profile.split_type === 'custom' ? 'Custom' :
+                   PRESET_SPLITS[profile.split_type as Exclude<SplitType, 'custom'>]?.name || profile.split_type}
+                </span>
+              </p>
+              {profile?.split_days && (
+                <p className="text-[10px] text-slate-600 mt-1">{profile.split_days.join(' → ')} → Rest</p>
+              )}
+              {!profile?.split_type && (
+                <p className="text-[10px] text-slate-600 mt-1">Mon: Chest & Triceps → Tue: Back & Abs → Wed: Biceps & Shoulders → Thu: Chest & Triceps → Fri: Legs & Rear Delt</p>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                if (!splitEditing) {
+                  // Initialize editor with current profile values
+                  if (!profile?.split_type) {
+                    setEditSplitType('zak');
+                  } else {
+                    setEditSplitType(profile.split_type as SplitType);
+                    if (profile.split_type === 'custom' && profile.split_days) {
+                      setEditSplitDays([...profile.split_days]);
+                      setEditSplitRestPattern(profile.split_rest_pattern || 3);
+                    }
+                    setEditSplitStartDay(0);
+                  }
+                }
+                setSplitEditing(!splitEditing);
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                splitEditing ? 'bg-slate-700 text-slate-300' : 'bg-blue-600 text-white'
+              }`}
+            >
+              {splitEditing ? 'Cancel' : 'Change'}
+            </button>
+          </div>
+
+          {splitEditing && (
+            <div className="space-y-3 pt-4 border-t border-white/10">
+              {/* Zak Split (Original) */}
+              <button
+                onClick={() => setEditSplitType('zak')}
+                className={`w-full p-4 rounded-2xl border text-left transition-all ${
+                  editSplitType === 'zak'
+                    ? 'bg-amber-900/30 border-amber-500'
+                    : 'bg-slate-900/50 border-white/10 hover:border-white/30'
+                }`}
+              >
+                <p className="font-black text-white">Zak Split (Original)</p>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Mon: Chest & Triceps → Tue: Back & Abs → Wed: Biceps & Shoulders → Thu: Chest & Triceps → Fri: Legs & Rear Delt → Sat/Sun: Rest
+                </p>
+                <p className="text-[10px] text-amber-400/70 mt-1">5 days, hits chest/triceps twice, legs once</p>
+              </button>
+
+              {/* Preset splits */}
+              {(Object.keys(PRESET_SPLITS) as Array<Exclude<SplitType, 'custom'>>).map((key) => {
+                const split = PRESET_SPLITS[key];
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setEditSplitType(key)}
+                    className={`w-full p-4 rounded-2xl border text-left transition-all ${
+                      editSplitType === key
+                        ? 'bg-blue-900/30 border-blue-500'
+                        : 'bg-slate-900/50 border-white/10 hover:border-white/30'
+                    }`}
+                  >
+                    <p className="font-black text-white">{split.name}</p>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      {split.days.join(' → ')} → Rest
+                    </p>
+                  </button>
+                );
+              })}
+
+              {/* Custom split option */}
+              <button
+                onClick={() => {
+                  setEditSplitType('custom');
+                  if (editSplitDays.length === 0 || (editSplitDays.length === 3 && editSplitDays[0] === 'Day 1')) {
+                    setEditSplitDays(['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5']);
+                    setEditSplitRestPattern(5);
+                  }
+                }}
+                className={`w-full p-4 rounded-2xl border text-left transition-all ${
+                  editSplitType === 'custom'
+                    ? 'bg-purple-900/30 border-purple-500'
+                    : 'bg-slate-900/50 border-white/10 hover:border-white/30'
+                }`}
+              >
+                <p className="font-black text-white">Custom Split</p>
+                <p className="text-[10px] text-slate-500 mt-1">Build your own routine</p>
+              </button>
+
+              {/* Custom split builder */}
+              {editSplitType === 'custom' && (
+                <div className="bg-slate-900/30 rounded-2xl p-4 border border-purple-500/30 space-y-3">
+                  <p className="text-[10px] text-purple-400 font-bold uppercase tracking-widest">Your Days</p>
+
+                  {editSplitDays.map((day, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={day}
+                        onChange={(e) => {
+                          const updated = [...editSplitDays];
+                          updated[idx] = e.target.value;
+                          setEditSplitDays(updated);
+                        }}
+                        placeholder={`Day ${idx + 1}`}
+                        className="flex-1 bg-slate-800 border border-white/10 rounded-xl p-3 font-bold text-white placeholder-slate-700 focus:outline-none focus:border-purple-500"
+                      />
+                      {editSplitDays.length > 1 && (
+                        <button
+                          onClick={() => setEditSplitDays(editSplitDays.filter((_, i) => i !== idx))}
+                          className="text-red-500/50 hover:text-red-500 px-2 font-bold"
+                        >
+                          X
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                  {editSplitDays.length < 7 && (
+                    <button
+                      onClick={() => setEditSplitDays([...editSplitDays, `Day ${editSplitDays.length + 1}`])}
+                      className="w-full py-2 border border-dashed border-white/20 text-slate-500 rounded-xl text-sm font-bold hover:border-purple-500 hover:text-purple-400 transition-colors"
+                    >
+                      + Add Day
+                    </button>
+                  )}
+
+                  <div className="pt-2">
+                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Rest after every</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="number"
+                        min="1"
+                        max="7"
+                        value={editSplitRestPattern}
+                        onChange={(e) => setEditSplitRestPattern(parseInt(e.target.value) || 1)}
+                        className="w-20 bg-slate-800 border border-white/10 rounded-xl p-2 text-center font-bold text-white focus:outline-none"
+                      />
+                      <span className="text-slate-500 text-sm">workout days</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Starting day picker (for non-Zak splits) */}
+              {editSplitType !== 'zak' && (
+                <div className="bg-slate-900/30 rounded-2xl p-4 border border-white/5 space-y-2">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">What are you training today?</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(editSplitType === 'custom' ? editSplitDays : PRESET_SPLITS[editSplitType as Exclude<SplitType, 'custom'>]?.days || []).map((day, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setEditSplitStartDay(idx)}
+                        className={`p-3 rounded-xl border text-center text-sm font-bold transition-all ${
+                          editSplitStartDay === idx
+                            ? 'bg-green-900/30 border-green-500 text-white'
+                            : 'bg-slate-800 border-white/10 text-slate-400 hover:border-white/30'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setEditSplitStartDay(-1)}
+                      className={`p-3 rounded-xl border text-center text-sm font-bold transition-all ${
+                        editSplitStartDay === -1
+                          ? 'bg-slate-700/30 border-slate-500 text-white'
+                          : 'bg-slate-800 border-white/10 text-slate-400 hover:border-white/30'
+                      }`}
+                    >
+                      Rest Day
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Apply button */}
+              <button
+                onClick={async () => {
+                  if (editSplitType === 'zak') {
+                    // Revert to original hardcoded schedule
+                    await updateSplit({
+                      split_type: null,
+                      split_days: null,
+                      split_rest_pattern: null,
+                      split_current_day_index: null,
+                      split_start_date: null,
+                    });
+                  } else {
+                    const days = editSplitType === 'custom'
+                      ? editSplitDays
+                      : PRESET_SPLITS[editSplitType as Exclude<SplitType, 'custom'>].days;
+                    const restPattern = editSplitType === 'custom'
+                      ? editSplitRestPattern
+                      : PRESET_SPLITS[editSplitType as Exclude<SplitType, 'custom'>].restPattern;
+                    await updateSplit({
+                      split_type: editSplitType,
+                      split_days: days,
+                      split_rest_pattern: restPattern,
+                      split_current_day_index: editSplitStartDay,
+                      split_start_date: new Date().toISOString().split('T')[0],
+                    });
+                  }
+                  setSplitEditing(false);
+                }}
+                className="w-full fire-button py-4 rounded-2xl font-black uppercase tracking-widest text-white"
+              >
+                Apply Split
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Ramadan Mode Section */}
