@@ -44,14 +44,17 @@ const App: React.FC = () => {
   const [showPhotoEstimator, setShowPhotoEstimator] = useState(false);
 
   // Compute nutrition goals from profile (with fallbacks for existing users)
+  // Custom goals take priority over calculated goals if set
   // Water goal: ~33ml per kg body weight (75kg = 2.5L, 90kg = 3L, 110kg = 3.6L)
   const waterGoal = profile?.weight ? Math.round(profile.weight * 33 / 100) * 100 : 3000;
+  const calorieGoal = profile?.custom_calorie_goal || profile?.calorie_goal || 2500;
+  const proteinGoal = profile?.custom_protein_goal || profile?.protein_goal || 180;
 
   const nutritionGoals: NutritionGoals = {
-    calories: profile?.calorie_goal || 2500,
-    protein: profile?.protein_goal || 180,
-    carbs: Math.round((profile?.calorie_goal || 2500) * 0.4 / 4), // ~40% of calories
-    fat: Math.round((profile?.calorie_goal || 2500) * 0.25 / 9), // ~25% of calories
+    calories: calorieGoal,
+    protein: proteinGoal,
+    carbs: Math.round(calorieGoal * 0.4 / 4), // ~40% of calories
+    fat: Math.round(calorieGoal * 0.25 / 9), // ~25% of calories
     water: waterGoal
   };
 
@@ -419,6 +422,25 @@ const App: React.FC = () => {
       alert('Failed to update settings');
     } else {
       setProfile(prev => prev ? { ...prev, ...settings } : null);
+    }
+  };
+
+  const updateCustomGoals = async (goals: {
+    custom_calorie_goal?: number | null;
+    custom_protein_goal?: number | null;
+  }) => {
+    if (!profile?.id) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(goals)
+      .eq('id', profile.id);
+
+    if (error) {
+      console.error('Error updating custom goals:', error);
+      alert('Failed to update goals');
+    } else {
+      setProfile(prev => prev ? { ...prev, ...goals } : null);
     }
   };
 
@@ -1150,11 +1172,93 @@ const App: React.FC = () => {
     const ramadanEnd = profile?.ramadan_end || '2026-03-19';
     const recoveryWeeks = profile?.ramadan_recovery_weeks || 2;
 
+    // Custom goals state
+    const calculatedCalories = profile?.calorie_goal || 2500;
+    const calculatedProtein = profile?.protein_goal || 180;
+    const customCalories = profile?.custom_calorie_goal;
+    const customProtein = profile?.custom_protein_goal;
+
     return (
       <div className="p-6 pb-24 animate-in fade-in duration-500" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)' }}>
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => setView('Home')} className="text-white bg-slate-900 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 active:bg-slate-800">←</button>
           <h2 className="text-2xl font-black italic tracking-tighter uppercase">Settings</h2>
+        </div>
+
+        {/* Custom Goals Section */}
+        <div className="bg-slate-900/30 rounded-3xl p-5 border border-white/10 mb-4">
+          <div className="mb-4">
+            <h3 className="text-lg font-black text-white">Custom Goals</h3>
+            <p className="text-xs text-slate-500">Override calculated goals with your own targets</p>
+          </div>
+
+          <div className="space-y-4">
+            {/* Calorie Goal */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-xs text-slate-500 font-bold uppercase tracking-widest">Daily Calories</label>
+                <span className="text-[10px] text-slate-600">Calculated: {calculatedCalories}</span>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={customCalories || ''}
+                  onChange={(e) => {
+                    const val = e.target.value ? parseInt(e.target.value) : null;
+                    updateCustomGoals({ custom_calorie_goal: val, custom_protein_goal: customProtein || null });
+                  }}
+                  placeholder={calculatedCalories.toString()}
+                  className="flex-1 bg-slate-800 text-orange-400 px-4 py-3 rounded-xl border border-white/10 focus:outline-none focus:border-orange-500 font-bold text-lg"
+                />
+                {customCalories && (
+                  <button
+                    onClick={() => updateCustomGoals({ custom_calorie_goal: null, custom_protein_goal: customProtein || null })}
+                    className="bg-slate-800 text-slate-500 px-4 py-3 rounded-xl border border-white/10 text-xs font-bold hover:text-red-400"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              {customCalories && (
+                <p className="text-[10px] text-orange-400/60 mt-1">Using custom goal: {customCalories} cal</p>
+              )}
+            </div>
+
+            {/* Protein Goal */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-xs text-slate-500 font-bold uppercase tracking-widest">Daily Protein (g)</label>
+                <span className="text-[10px] text-slate-600">Calculated: {calculatedProtein}g</span>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={customProtein || ''}
+                  onChange={(e) => {
+                    const val = e.target.value ? parseInt(e.target.value) : null;
+                    updateCustomGoals({ custom_calorie_goal: customCalories || null, custom_protein_goal: val });
+                  }}
+                  placeholder={calculatedProtein.toString()}
+                  className="flex-1 bg-slate-800 text-blue-400 px-4 py-3 rounded-xl border border-white/10 focus:outline-none focus:border-blue-500 font-bold text-lg"
+                />
+                {customProtein && (
+                  <button
+                    onClick={() => updateCustomGoals({ custom_calorie_goal: customCalories || null, custom_protein_goal: null })}
+                    className="bg-slate-800 text-slate-500 px-4 py-3 rounded-xl border border-white/10 text-xs font-bold hover:text-red-400"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              {customProtein && (
+                <p className="text-[10px] text-blue-400/60 mt-1">Using custom goal: {customProtein}g</p>
+              )}
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-600 mt-4">
+            Leave blank to use calculated goals based on your profile. Custom goals help if you know your actual needs differ from estimates.
+          </p>
         </div>
 
         {/* Ramadan Mode Section */}
@@ -1211,8 +1315,6 @@ const App: React.FC = () => {
             </div>
           )}
         </div>
-
-        <p className="text-xs text-slate-600 text-center mt-6">More settings coming soon</p>
       </div>
     );
   };

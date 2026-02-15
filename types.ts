@@ -93,6 +93,7 @@ export interface FoodLog {
   amount: number; // grams or ml depending on unit
   unit: 'g' | 'ml'; // grams for solids, ml for liquids
   source: 'manual' | 'barcode' | 'ai';
+  waterContribution?: number; // ml of water to add (for beverages, ~85% of ml)
 }
 
 // Gender and activity level types
@@ -126,6 +127,9 @@ export interface AuthUserProfile {
   ramadan_start?: string; // ISO date string (YYYY-MM-DD)
   ramadan_end?: string; // ISO date string (YYYY-MM-DD)
   ramadan_recovery_weeks?: number; // weeks after Ramadan to stay in adjusted mode
+  // Custom goal overrides (if set, these take priority over calculated goals)
+  custom_calorie_goal?: number;
+  custom_protein_goal?: number;
 }
 
 export interface WaterLog {
