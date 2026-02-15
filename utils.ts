@@ -118,11 +118,13 @@ export interface SmartTarget {
 
 /**
  * Get exercise history filtered by workout type (only compare like-for-like sessions)
+ * If skipTypeFilter is true, matches exercise across ALL session types (for admin cross-split tracking)
  */
 export const getExerciseHistory = (
   exerciseName: string,
   history: WorkoutSession[],
-  workoutType: string
+  workoutType: string,
+  skipTypeFilter: boolean = false
 ): ExerciseHistoryEntry[] => {
   const normalizedName = exerciseName.trim().toLowerCase();
   const entries: ExerciseHistoryEntry[] = [];
@@ -134,8 +136,8 @@ export const getExerciseHistory = (
   eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
 
   for (const session of history) {
-    // Only compare same workout type
-    if (session.type !== workoutType) continue;
+    // Only compare same workout type (unless admin cross-split mode)
+    if (!skipTypeFilter && session.type !== workoutType) continue;
 
     const sessionDate = new Date(session.date);
     if (sessionDate < eightWeeksAgo) continue;
@@ -221,9 +223,10 @@ const detectPlateau = (entries: ExerciseHistoryEntry[]): boolean => {
 export const calculateSmartTarget = (
   exerciseName: string,
   history: WorkoutSession[],
-  workoutType: string
+  workoutType: string,
+  skipTypeFilter: boolean = false
 ): SmartTarget => {
-  const entries = getExerciseHistory(exerciseName, history, workoutType);
+  const entries = getExerciseHistory(exerciseName, history, workoutType, skipTypeFilter);
   const sessionCount = entries.length;
 
   // Base case: no data

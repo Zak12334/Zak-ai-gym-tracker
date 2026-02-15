@@ -50,6 +50,9 @@ const App: React.FC = () => {
   const [editSplitRestPattern, setEditSplitRestPattern] = useState(3);
   const [editSplitStartDay, setEditSplitStartDay] = useState(0);
 
+  // Admin detection - Zak's account gets admin privileges (cross-split history, etc.)
+  const isAdmin = profile?.name?.toLowerCase() === 'zak';
+
   // Compute nutrition goals from profile (with fallbacks for existing users)
   // Custom goals take priority over calculated goals if set
   // Water goal: ~33ml per kg body weight (75kg = 2.5L, 90kg = 3L, 110kg = 3.6L)
@@ -891,8 +894,9 @@ const App: React.FC = () => {
 
   const renderExercise = (ex: Exercise) => {
     // Calculate smart target for this exercise
+    // Admin (Zak) gets cross-split history - exercise data carries over when changing splits
     const smartTarget = activeSession && ex.name.trim()
-      ? calculateSmartTarget(ex.name, history, activeSession.type)
+      ? calculateSmartTarget(ex.name, history, activeSession.type, isAdmin)
       : null;
 
     return (
