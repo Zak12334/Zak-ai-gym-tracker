@@ -202,10 +202,13 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
 
   return (
     <div className="fixed inset-0 bg-black z-[70] flex flex-col">
-      {/* Header */}
-      <div className="flex justify-between items-center p-4 bg-black border-b border-white/10">
+      {/* Header - with safe area for iPhone notch/dynamic island */}
+      <div
+        className="flex justify-between items-center px-4 pb-4 bg-black border-b border-white/10"
+        style={{ paddingTop: 'max(env(safe-area-inset-top, 0px) + 16px, 52px)' }}
+      >
         <h2 className="text-xl font-black uppercase text-white">Scan Barcode</h2>
-        <button onClick={onClose} className="text-white bg-slate-800 w-10 h-10 rounded-full flex items-center justify-center">
+        <button onClick={onClose} className="text-slate-400 p-2 -mr-2 active:bg-white/10 rounded-full">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
