@@ -51,23 +51,36 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
       setIsScanning(true);
       setError(null);
 
-      // Camera constraints with continuous autofocus
-      const cameraConstraints = {
-        facingMode: "environment",
-        focusMode: "continuous",
-        advanced: [{ focusMode: "continuous" }]
-      } as MediaTrackConstraints;
+      const scannerConfig = {
+        fps: 15,
+        qrbox: { width: 320, height: 160 },
+        aspectRatio: 1.777,
+      };
 
       await scannerRef.current.start(
-        cameraConstraints,
-        {
-          fps: 15,
-          qrbox: { width: 320, height: 160 },
-          aspectRatio: 1.777,
-        },
+        { facingMode: "environment" },
+        scannerConfig,
         onScanSuccess,
         () => {}
       );
+
+      // Try to enable continuous autofocus after camera starts
+      try {
+        const videoElement = document.querySelector('#barcode-reader video') as HTMLVideoElement;
+        if (videoElement && videoElement.srcObject) {
+          const stream = videoElement.srcObject as MediaStream;
+          const track = stream.getVideoTracks()[0];
+          const capabilities = track.getCapabilities() as MediaTrackCapabilities & { focusMode?: string[] };
+          if (capabilities.focusMode?.includes('continuous')) {
+            await track.applyConstraints({
+              advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet]
+            });
+          }
+        }
+      } catch (focusErr) {
+        // Focus settings not supported, continue without them
+        console.log("Autofocus not supported:", focusErr);
+      }
     } catch (err: any) {
       console.error("Scanner error:", err);
       setError("Camera access denied. Please allow camera permissions.");
