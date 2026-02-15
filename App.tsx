@@ -16,7 +16,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import supabase from './supabaseClient';
 import { User } from '@supabase/supabase-js';
 
-type View = 'Home' | 'Active' | 'History' | 'Report' | 'EditSession' | 'Nutrition';
+type View = 'Home' | 'Active' | 'History' | 'Report' | 'EditSession' | 'Nutrition' | 'Settings';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('Home');
@@ -401,6 +401,27 @@ const App: React.FC = () => {
     setView('Home');
   };
 
+  const updateRamadanSettings = async (settings: {
+    ramadan_mode: boolean;
+    ramadan_start?: string;
+    ramadan_end?: string;
+    ramadan_recovery_weeks?: number;
+  }) => {
+    if (!profile?.id) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(settings)
+      .eq('id', profile.id);
+
+    if (error) {
+      console.error('Error updating Ramadan settings:', error);
+      alert('Failed to update settings');
+    } else {
+      setProfile(prev => prev ? { ...prev, ...settings } : null);
+    }
+  };
+
   useEffect(() => {
     if (activeSession && !activeSession.endTime) {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -777,6 +798,12 @@ const App: React.FC = () => {
             <div className="absolute right-0 top-12 bg-slate-900 border border-white/10 rounded-2xl p-2 shadow-xl z-50 min-w-[150px]">
               <p className="text-[10px] text-slate-500 px-3 py-2 font-bold uppercase tracking-widest">{authUser?.email}</p>
               <button
+                onClick={() => { setShowLogoutMenu(false); setView('Settings'); }}
+                className="w-full text-left px-3 py-2 text-white font-bold text-sm rounded-xl hover:bg-white/10 transition-colors"
+              >
+                Settings
+              </button>
+              <button
                 onClick={handleLogout}
                 className="w-full text-left px-3 py-2 text-red-400 font-bold text-sm rounded-xl hover:bg-red-900/30 transition-colors"
               >
@@ -1117,6 +1144,79 @@ const App: React.FC = () => {
     </div>
   );
 
+  const renderSettings = () => {
+    const ramadanEnabled = profile?.ramadan_mode || false;
+    const ramadanStart = profile?.ramadan_start || '2026-02-17';
+    const ramadanEnd = profile?.ramadan_end || '2026-03-19';
+    const recoveryWeeks = profile?.ramadan_recovery_weeks || 2;
+
+    return (
+      <div className="p-6 pb-24 animate-in fade-in duration-500" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)' }}>
+        <div className="flex items-center gap-3 mb-6">
+          <button onClick={() => setView('Home')} className="text-white bg-slate-900 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 active:bg-slate-800">←</button>
+          <h2 className="text-2xl font-black italic tracking-tighter uppercase">Settings</h2>
+        </div>
+
+        {/* Ramadan Mode Section */}
+        <div className="bg-slate-900/30 rounded-3xl p-5 border border-white/10 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-black text-white">Ramadan Mode</h3>
+              <p className="text-xs text-slate-500">Adjusts AI expectations during fasting</p>
+            </div>
+            <button
+              onClick={() => updateRamadanSettings({ ramadan_mode: !ramadanEnabled, ramadan_start: ramadanStart, ramadan_end: ramadanEnd, ramadan_recovery_weeks: recoveryWeeks })}
+              className={`w-14 h-8 rounded-full transition-colors ${ramadanEnabled ? 'bg-green-600' : 'bg-slate-700'} relative`}
+            >
+              <div className={`w-6 h-6 bg-white rounded-full absolute top-1 transition-transform ${ramadanEnabled ? 'translate-x-7' : 'translate-x-1'}`} />
+            </button>
+          </div>
+
+          {ramadanEnabled && (
+            <div className="space-y-4 pt-4 border-t border-white/10">
+              <div>
+                <label className="text-xs text-slate-500 font-bold uppercase tracking-widest block mb-2">Ramadan Start Date</label>
+                <input
+                  type="date"
+                  value={ramadanStart}
+                  onChange={(e) => updateRamadanSettings({ ramadan_mode: true, ramadan_start: e.target.value, ramadan_end: ramadanEnd, ramadan_recovery_weeks: recoveryWeeks })}
+                  className="w-full bg-slate-800 text-white px-4 py-3 rounded-xl border border-white/10 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 font-bold uppercase tracking-widest block mb-2">Ramadan End Date</label>
+                <input
+                  type="date"
+                  value={ramadanEnd}
+                  onChange={(e) => updateRamadanSettings({ ramadan_mode: true, ramadan_start: ramadanStart, ramadan_end: e.target.value, ramadan_recovery_weeks: recoveryWeeks })}
+                  className="w-full bg-slate-800 text-white px-4 py-3 rounded-xl border border-white/10 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 font-bold uppercase tracking-widest block mb-2">Recovery Weeks After Ramadan</label>
+                <select
+                  value={recoveryWeeks}
+                  onChange={(e) => updateRamadanSettings({ ramadan_mode: true, ramadan_start: ramadanStart, ramadan_end: ramadanEnd, ramadan_recovery_weeks: parseInt(e.target.value) })}
+                  className="w-full bg-slate-800 text-white px-4 py-3 rounded-xl border border-white/10 focus:outline-none focus:border-blue-500"
+                >
+                  <option value={1}>1 week</option>
+                  <option value={2}>2 weeks</option>
+                  <option value={3}>3 weeks</option>
+                  <option value={4}>4 weeks</option>
+                </select>
+              </div>
+              <p className="text-xs text-slate-600 mt-2">
+                During Ramadan, IronMind AI will adjust expectations for your nutrition and won't criticize lower intake. It will focus on optimizing your iftar and suhoor meals instead.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <p className="text-xs text-slate-600 text-center mt-6">More settings coming soon</p>
+      </div>
+    );
+  };
+
   const renderEditSession = () => {
     if (!editingSession) return null;
     const volume = editingSession.exercises.reduce((acc, ex) =>
@@ -1239,6 +1339,7 @@ const App: React.FC = () => {
       {view === 'History' && renderHistory()}
       {view === 'Report' && renderReport()}
       {view === 'EditSession' && renderEditSession()}
+      {view === 'Settings' && renderSettings()}
       {view === 'Nutrition' && (
         <NutritionView
           foods={foodLogs}

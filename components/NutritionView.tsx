@@ -37,6 +37,30 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
+  // Date navigation
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const today = new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === today;
+
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const current = new Date(selectedDate);
+    if (direction === 'prev') {
+      current.setDate(current.getDate() - 1);
+    } else {
+      current.setDate(current.getDate() + 1);
+    }
+    setSelectedDate(current.toISOString().split('T')[0]);
+  };
+
+  const formatDateDisplay = (dateStr: string) => {
+    const date = new Date(dateStr);
+    if (dateStr === today) return 'Today';
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (dateStr === yesterday.toISOString().split('T')[0]) return 'Yesterday';
+    return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+
   // Handle keyboard visibility for iOS
   useEffect(() => {
     if (!showQuickAdd) return;
@@ -71,17 +95,16 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   const [manualAmount, setManualAmount] = useState('100');
   const [manualUnit, setManualUnit] = useState<'g' | 'ml'>('g');
 
-  // Calculate daily totals
-  const today = new Date().toISOString().split('T')[0];
-  const todayFoods = foods.filter(f => f.date === today);
-  const todayWater = waterLogs.filter(w => w.date === today);
+  // Calculate daily totals for selected date
+  const selectedFoods = foods.filter(f => f.date === selectedDate);
+  const selectedWater = waterLogs.filter(w => w.date === selectedDate);
 
   const totals = {
-    calories: todayFoods.reduce((sum, f) => sum + f.calories, 0),
-    protein: todayFoods.reduce((sum, f) => sum + f.protein, 0),
-    carbs: todayFoods.reduce((sum, f) => sum + f.carbs, 0),
-    fat: todayFoods.reduce((sum, f) => sum + f.fat, 0),
-    water: todayWater.reduce((sum, w) => sum + w.amount, 0)
+    calories: selectedFoods.reduce((sum, f) => sum + f.calories, 0),
+    protein: selectedFoods.reduce((sum, f) => sum + f.protein, 0),
+    carbs: selectedFoods.reduce((sum, f) => sum + f.carbs, 0),
+    fat: selectedFoods.reduce((sum, f) => sum + f.fat, 0),
+    water: selectedWater.reduce((sum, w) => sum + w.amount, 0)
   };
 
   // Progress percentages
@@ -90,6 +113,57 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     protein: Math.min((totals.protein / goals.protein) * 100, 100),
     water: Math.min((totals.water / goals.water) * 100, 100)
   };
+
+  // Calculate weekly stats (last 7 days)
+  const getWeeklyStats = () => {
+    const last7Days: string[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      last7Days.push(date.toISOString().split('T')[0]);
+    }
+
+    const dailyData = last7Days.map(date => {
+      const dayFoods = foods.filter(f => f.date === date);
+      const dayWater = waterLogs.filter(w => w.date === date);
+      const calories = dayFoods.reduce((sum, f) => sum + f.calories, 0);
+      const protein = dayFoods.reduce((sum, f) => sum + f.protein, 0);
+      const water = dayWater.reduce((sum, w) => sum + w.amount, 0);
+      return {
+        date,
+        calories,
+        protein,
+        water,
+        hitCalories: calories >= goals.calories * 0.9,
+        hitProtein: protein >= goals.protein * 0.9,
+        hitWater: water >= goals.water * 0.9,
+        hasData: dayFoods.length > 0 || dayWater.length > 0
+      };
+    });
+
+    const daysWithData = dailyData.filter(d => d.hasData);
+    const avgCalories = daysWithData.length > 0 ? Math.round(daysWithData.reduce((sum, d) => sum + d.calories, 0) / daysWithData.length) : 0;
+    const avgProtein = daysWithData.length > 0 ? Math.round(daysWithData.reduce((sum, d) => sum + d.protein, 0) / daysWithData.length) : 0;
+    const avgWater = daysWithData.length > 0 ? Math.round(daysWithData.reduce((sum, d) => sum + d.water, 0) / daysWithData.length) : 0;
+
+    // Calculate protein streak (consecutive days hitting 90%+ of goal)
+    let proteinStreak = 0;
+    for (let i = dailyData.length - 1; i >= 0; i--) {
+      if (dailyData[i].hitProtein) proteinStreak++;
+      else break;
+    }
+
+    // Calculate calorie streak
+    let calorieStreak = 0;
+    for (let i = dailyData.length - 1; i >= 0; i--) {
+      if (dailyData[i].hitCalories) calorieStreak++;
+      else break;
+    }
+
+    return { dailyData, avgCalories, avgProtein, avgWater, proteinStreak, calorieStreak, daysTracked: daysWithData.length };
+  };
+
+  const weeklyStats = getWeeklyStats();
 
   // Handle input change with search
   useEffect(() => {
@@ -221,10 +295,92 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           </button>
           <div>
             <h2 className="text-2xl font-black italic tracking-tighter uppercase">Nutrition</h2>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-              {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
-            </p>
           </div>
+        </div>
+      </div>
+
+      {/* Date Navigation */}
+      <div className="flex items-center justify-between bg-slate-900/50 rounded-2xl p-3 mb-6 border border-white/5">
+        <button
+          onClick={() => navigateDate('prev')}
+          className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center active:bg-slate-700 transition-colors"
+        >
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <div className="text-center">
+          <p className="font-black text-white text-lg">{formatDateDisplay(selectedDate)}</p>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+            {new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+          </p>
+        </div>
+        <button
+          onClick={() => navigateDate('next')}
+          disabled={isToday}
+          className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isToday ? 'bg-slate-900 text-slate-700' : 'bg-slate-800 text-white active:bg-slate-700'}`}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+
+      {/* Weekly Overview - Mini Calendar Heatmap */}
+      <div className="bg-slate-900/30 rounded-2xl p-4 border border-white/5 mb-6">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Last 7 Days</h3>
+          <div className="flex gap-3">
+            {weeklyStats.proteinStreak > 0 && (
+              <span className="text-[10px] font-bold text-blue-400 flex items-center gap-1">
+                <span className="text-sm">🔥</span> {weeklyStats.proteinStreak} day protein streak
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Mini Calendar Heatmap */}
+        <div className="grid grid-cols-7 gap-1 mb-4">
+          {weeklyStats.dailyData.map((day, i) => {
+            const dayOfWeek = new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' }).charAt(0);
+            const isSelected = day.date === selectedDate;
+            let bgColor = 'bg-slate-800'; // No data
+            if (day.hasData) {
+              if (day.hitProtein && day.hitCalories) bgColor = 'bg-green-600';
+              else if (day.hitProtein || day.hitCalories) bgColor = 'bg-yellow-600';
+              else bgColor = 'bg-red-600/50';
+            }
+            return (
+              <button
+                key={day.date}
+                onClick={() => setSelectedDate(day.date)}
+                className={`flex flex-col items-center p-2 rounded-xl transition-all ${bgColor} ${isSelected ? 'ring-2 ring-white' : ''}`}
+              >
+                <span className="text-[8px] text-slate-400 uppercase">{dayOfWeek}</span>
+                <span className="text-xs font-bold text-white">{new Date(day.date).getDate()}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Weekly Averages */}
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="bg-slate-800/50 rounded-xl p-2">
+            <p className="text-lg font-black text-orange-400">{weeklyStats.avgCalories}</p>
+            <p className="text-[8px] text-slate-500 uppercase">Avg Cal</p>
+          </div>
+          <div className="bg-slate-800/50 rounded-xl p-2">
+            <p className="text-lg font-black text-blue-400">{weeklyStats.avgProtein}g</p>
+            <p className="text-[8px] text-slate-500 uppercase">Avg Protein</p>
+          </div>
+          <div className="bg-slate-800/50 rounded-xl p-2">
+            <p className="text-lg font-black text-cyan-400">{(weeklyStats.avgWater / 1000).toFixed(1)}L</p>
+            <p className="text-[8px] text-slate-500 uppercase">Avg Water</p>
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="flex justify-center gap-4 mt-3 text-[8px] text-slate-500">
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-green-600"></span> Hit goals</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-yellow-600"></span> Partial</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-red-600/50"></span> Missed</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-slate-800"></span> No data</span>
         </div>
       </div>
 
@@ -335,9 +491,9 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         </div>
 
         {/* Today's water logs with delete option */}
-        {todayWater.length > 0 && (
+        {selectedWater.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-3">
-            {todayWater.slice(0, 6).map((log) => (
+            {selectedWater.slice(0, 6).map((log) => (
               <button
                 key={log.id}
                 onClick={() => onDeleteWater(log.id)}
@@ -349,44 +505,53 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 </svg>
               </button>
             ))}
-            {todayWater.length > 6 && (
-              <span className="text-slate-600 text-xs font-bold px-2 py-1.5">+{todayWater.length - 6} more</span>
+            {selectedWater.length > 6 && (
+              <span className="text-slate-600 text-xs font-bold px-2 py-1.5">+{selectedWater.length - 6} more</span>
             )}
           </div>
         )}
       </div>
 
-      {/* Add Food Buttons */}
-      <div className="grid grid-cols-3 gap-2 mb-6">
+      {/* Add Food Buttons (only show when viewing today) */}
+      {isToday ? (
+        <div className="grid grid-cols-3 gap-2 mb-6">
+          <button
+            onClick={onScanBarcode}
+            className="bg-slate-900 border border-white/10 rounded-2xl p-4 flex flex-col items-center gap-2 active:bg-slate-800 transition-colors"
+          >
+            <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+            </svg>
+            <span className="text-[10px] font-black uppercase text-slate-400">Scan</span>
+          </button>
+          <button
+            onClick={() => setShowQuickAdd(true)}
+            className="bg-slate-900 border border-white/10 rounded-2xl p-4 flex flex-col items-center gap-2 active:bg-slate-800 transition-colors"
+          >
+            <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span className="text-[10px] font-black uppercase text-slate-400">Quick Add</span>
+          </button>
+          <button
+            onClick={onPhotoEstimate}
+            className="bg-slate-900 border border-white/10 rounded-2xl p-4 flex flex-col items-center gap-2 active:bg-slate-800 transition-colors"
+          >
+            <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span className="text-[10px] font-black uppercase text-slate-400">Photo</span>
+          </button>
+        </div>
+      ) : (
         <button
-          onClick={onScanBarcode}
-          className="bg-slate-900 border border-white/10 rounded-2xl p-4 flex flex-col items-center gap-2 active:bg-slate-800 transition-colors"
+          onClick={() => setSelectedDate(today)}
+          className="w-full bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-2xl p-4 mb-6 font-bold active:bg-blue-600/30 transition-colors"
         >
-          <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-          </svg>
-          <span className="text-[10px] font-black uppercase text-slate-400">Scan</span>
+          Jump to Today to Add Food
         </button>
-        <button
-          onClick={() => setShowQuickAdd(true)}
-          className="bg-slate-900 border border-white/10 rounded-2xl p-4 flex flex-col items-center gap-2 active:bg-slate-800 transition-colors"
-        >
-          <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-          </svg>
-          <span className="text-[10px] font-black uppercase text-slate-400">Quick Add</span>
-        </button>
-        <button
-          onClick={onPhotoEstimate}
-          className="bg-slate-900 border border-white/10 rounded-2xl p-4 flex flex-col items-center gap-2 active:bg-slate-800 transition-colors"
-        >
-          <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span className="text-[10px] font-black uppercase text-slate-400">Photo</span>
-        </button>
-      </div>
+      )}
 
       {/* Quick Add Modal */}
       {showQuickAdd && (
@@ -659,7 +824,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       )}
 
       {/* Macros breakdown */}
-      {todayFoods.length > 0 && (
+      {selectedFoods.length > 0 && (
         <div className="bg-slate-900/30 rounded-2xl p-4 border border-white/5 mb-6">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Macro Breakdown</h3>
           <div className="grid grid-cols-3 gap-4 text-center">
@@ -679,17 +844,17 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         </div>
       )}
 
-      {/* Today's Food Log */}
+      {/* Food Log for Selected Date */}
       <div className="mb-6">
-        <h3 className="text-sm font-black uppercase tracking-widest text-slate-500 mb-3">Today's Log</h3>
-        {todayFoods.length === 0 ? (
+        <h3 className="text-sm font-black uppercase tracking-widest text-slate-500 mb-3">{isToday ? "Today's Log" : formatDateDisplay(selectedDate) + "'s Log"}</h3>
+        {selectedFoods.length === 0 ? (
           <div className="bg-slate-900/30 rounded-2xl p-8 text-center">
             <p className="text-slate-700 font-bold italic">No food logged yet</p>
             <p className="text-[10px] text-slate-800 mt-1">Tap Quick Add to start tracking</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {todayFoods.map(food => (
+            {selectedFoods.map(food => (
               <div key={food.id} className="bg-slate-900/50 rounded-2xl p-4 border border-white/5 flex justify-between items-center">
                 <div>
                   <p className="font-bold text-white">{food.name}</p>

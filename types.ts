@@ -121,6 +121,11 @@ export interface AuthUserProfile {
   calorie_goal?: number;
   protein_goal?: number;
   created_at?: string;
+  // Ramadan fasting mode (user-specific)
+  ramadan_mode?: boolean;
+  ramadan_start?: string; // ISO date string (YYYY-MM-DD)
+  ramadan_end?: string; // ISO date string (YYYY-MM-DD)
+  ramadan_recovery_weeks?: number; // weeks after Ramadan to stay in adjusted mode
 }
 
 export interface WaterLog {

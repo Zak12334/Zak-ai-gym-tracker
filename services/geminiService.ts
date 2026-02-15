@@ -1,5 +1,5 @@
 
-import { WorkoutSession, UserProfile, FoodLog, WaterLog, NutritionGoals } from "../types";
+import { WorkoutSession, AuthUserProfile, FoodLog, WaterLog, NutritionGoals } from "../types";
 
 interface NutritionData {
   foodLogs: FoodLog[];
@@ -7,13 +7,39 @@ interface NutritionData {
   goals: NutritionGoals;
 }
 
+// Check if currently in Ramadan or recovery period
+const isRamadanActive = (profile: AuthUserProfile | null): { active: boolean; phase: 'ramadan' | 'recovery' | 'none' } => {
+  if (!profile?.ramadan_mode) return { active: false, phase: 'none' };
+
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+
+  if (profile.ramadan_start && profile.ramadan_end) {
+    // Check if within Ramadan dates
+    if (todayStr >= profile.ramadan_start && todayStr <= profile.ramadan_end) {
+      return { active: true, phase: 'ramadan' };
+    }
+
+    // Check if within recovery period
+    if (profile.ramadan_recovery_weeks && todayStr > profile.ramadan_end) {
+      const endDate = new Date(profile.ramadan_end);
+      const recoveryEndDate = new Date(endDate.getTime() + (profile.ramadan_recovery_weeks * 7 * 24 * 60 * 60 * 1000));
+      if (today <= recoveryEndDate) {
+        return { active: true, phase: 'recovery' };
+      }
+    }
+  }
+
+  return { active: false, phase: 'none' };
+};
+
 /**
  * Generates a monthly strength progression report via a secure backend logic engine.
  * Communicates with the /api/chat serverless function to protect API credentials.
  */
 export const generateMonthlyReport = async (
   sessions: WorkoutSession[],
-  profile: UserProfile | null,
+  profile: AuthUserProfile | null,
   nutritionData?: NutritionData
 ): Promise<string> => {
   // Group sessions by workout type for like-for-like comparison
@@ -102,10 +128,36 @@ export const generateMonthlyReport = async (
 
   const profileContext = profile ? `User: ${profile.name}, Age: ${profile.age}, Body Weight: ${profile.weight}kg, Height: ${profile.height}ft.` : "User: Zak.";
 
+  // Check Ramadan status
+  const ramadanStatus = isRamadanActive(profile);
+  let ramadanContext = '';
+  if (ramadanStatus.active) {
+    if (ramadanStatus.phase === 'ramadan') {
+      ramadanContext = `
+    **IMPORTANT CONTEXT: ${profile?.name || 'User'} is currently observing Ramadan (Islamic fasting month).**
+    - They fast from sunrise to sunset (no food or water during daylight hours)
+    - They eat only 2 meals: Iftar (at sunset) and Suhoor (before sunrise ~4:30am)
+    - Lower calorie/protein intake is EXPECTED and NOT a failure
+    - Focus should be on: maximizing protein in the 2 meals, maintaining hydration between meals, and strength MAINTENANCE (not gains)
+    - Do NOT criticize low intake - instead give tips for optimizing the limited eating window
+    - Expect gym performance to be slightly lower - this is normal during fasting
+      `;
+    } else if (ramadanStatus.phase === 'recovery') {
+      ramadanContext = `
+    **IMPORTANT CONTEXT: ${profile?.name || 'User'} recently completed Ramadan and is in recovery phase.**
+    - They are gradually returning to normal eating patterns after a month of fasting
+    - Sudden jumps to full calorie intake can cause digestive issues
+    - Be encouraging about gradual increases rather than demanding immediate return to full intake
+    - Expect strength to rebuild over 2-3 weeks
+      `;
+    }
+  }
+
   // Generate the logical prompt on the frontend to keep the backend function generic
   const message = `
     Analyze ${profile?.name || 'Zak'}'s gym performance and nutrition data.
     ${profileContext}
+    ${ramadanContext}
 
     CRITICAL RULE: Only compare sessions of the SAME workout type. Never compare Back & Abs volume to Biceps & Shoulders - they are completely different muscle groups with different volume capacities.
 
@@ -140,23 +192,42 @@ export const generateMonthlyReport = async (
     - Key lifts: [status of main exercises]
     - Action: [specific recommendation]
 
-    **NUTRITION ANALYSIS** (if nutrition data exists)
+    **NUTRITION ANALYSIS** (if nutrition data exists)${ramadanStatus.phase === 'ramadan' ? `
+    RAMADAN FASTING CONTEXT - Adjust expectations accordingly:
+    - Protein intake: [Are they maximizing protein in their 2 meals? Aim for 40-50g per meal]
+    - Meal optimization: [Is iftar/suhoor well-structured for muscle preservation?]
+    - Hydration: [Are they hydrating well between iftar and suhoor?]
+    - Fasting adaptation: [How is energy/performance holding up?]
+    - Action: [Ramadan-specific tips - timing, food choices, workout scheduling]` : ramadanStatus.phase === 'recovery' ? `
+    POST-RAMADAN RECOVERY - Be encouraging about gradual return:
+    - Protein intake: [Is it gradually increasing? Don't expect immediate return to full intake]
+    - Calorie intake: [Gradual increase is healthy - sudden jumps can cause issues]
+    - Recovery progress: [Acknowledge the adjustment period]
+    - Action: [Tips for rebuilding eating habits and strength]` : `
     - Protein intake: [Is it sufficient for muscle growth at ${profile?.weight || 80}kg bodyweight? Need ~1.6-2.2g per kg]
     - Calorie intake: [Surplus/deficit/maintenance? Consistent or inconsistent?]
     - Hydration: [Adequate for performance?]
     - Impact on gains: [Is nutrition supporting or limiting progress?]
-    - Action: [Specific nutrition recommendation if needed]
+    - Action: [Specific nutrition recommendation if needed]`}
 
     **OVERALL ASSESSMENT**
-    - Summary of ${profile?.name || 'Zak'}'s progress across workouts AND nutrition
+    - Summary of ${profile?.name || 'Zak'}'s progress across workouts AND nutrition${ramadanStatus.phase === 'ramadan' ? `
+    - During Ramadan: Focus on strength MAINTENANCE, not gains - this is expected and okay
+    - Acknowledge the discipline of fasting while training` : ramadanStatus.phase === 'recovery' ? `
+    - Post-Ramadan: Be patient with recovery, strength will return over 2-3 weeks
+    - Encourage gradual return to normal eating` : `
     - If protein/calories are consistently low, FLAG THIS as limiting muscle growth
-    - 1-2 days of low intake is fine, but consistent under-eating = no gains
+    - 1-2 days of low intake is fine, but consistent under-eating = no gains`}
     - Next priority target
 
-    Keep it data-driven and direct. Use ${profile?.name || 'Zak'}'s name. No fluff. Be honest if nutrition is sabotaging their gym progress.
+    Keep it data-driven and direct. Use ${profile?.name || 'Zak'}'s name. No fluff.${ramadanStatus.active ? ' Be supportive and understanding of the fasting context.' : ' Be honest if nutrition is sabotaging their gym progress.'}
   `;
 
-  const systemInstruction = `You are the IronMind AI, ${profile?.name || 'Zak'}'s personal strength and nutrition logic engine. You analyze workout AND nutrition patterns to maximize muscle growth. CRITICAL: Never compare different workout types against each other - Back days have higher volume than Biceps days by nature. Only compare same-type sessions. Be BRUTALLY HONEST about nutrition - if protein intake is too low for muscle growth, say it clearly. Speak directly in a data-driven tone.`;
+  const systemInstruction = ramadanStatus.phase === 'ramadan'
+    ? `You are the IronMind AI, ${profile?.name || 'Zak'}'s personal strength and nutrition logic engine. ${profile?.name || 'Zak'} is currently observing Ramadan - a month of fasting from sunrise to sunset. Be SUPPORTIVE and UNDERSTANDING. Focus on optimizing their limited eating windows rather than criticizing low intake. Help them maintain strength during fasting. Never compare different workout types against each other. Speak directly but with cultural sensitivity.`
+    : ramadanStatus.phase === 'recovery'
+    ? `You are the IronMind AI, ${profile?.name || 'Zak'}'s personal strength and nutrition logic engine. ${profile?.name || 'Zak'} recently completed Ramadan and is readjusting to normal eating. Be ENCOURAGING about gradual progress. Don't expect immediate return to full intake - the body needs time to readjust. Focus on steady rebuilding. Never compare different workout types against each other. Speak directly in a supportive tone.`
+    : `You are the IronMind AI, ${profile?.name || 'Zak'}'s personal strength and nutrition logic engine. You analyze workout AND nutrition patterns to maximize muscle growth. CRITICAL: Never compare different workout types against each other - Back days have higher volume than Biceps days by nature. Only compare same-type sessions. Be BRUTALLY HONEST about nutrition - if protein intake is too low for muscle growth, say it clearly. Speak directly in a data-driven tone.`;
 
   try {
     // Call the local secure proxy instead of a direct external API
