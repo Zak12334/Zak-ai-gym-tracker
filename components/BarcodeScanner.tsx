@@ -51,11 +51,19 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
       setIsScanning(true);
       setError(null);
 
+      // Camera constraints with continuous autofocus
+      const cameraConstraints = {
+        facingMode: "environment",
+        focusMode: "continuous",
+        advanced: [{ focusMode: "continuous" }]
+      } as MediaTrackConstraints;
+
       await scannerRef.current.start(
-        { facingMode: "environment" },
+        cameraConstraints,
         {
-          fps: 10,
-          qrbox: { width: 280, height: 120 },
+          fps: 15,
+          qrbox: { width: 320, height: 160 },
+          aspectRatio: 1.777,
         },
         onScanSuccess,
         () => {}
