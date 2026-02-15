@@ -118,9 +118,12 @@ export const PhotoEstimator: React.FC<PhotoEstimatorProps> = ({ onFoodsFound, on
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col">
       {/* Header - with safe area for iPhone notch/dynamic island */}
-      <div className="flex justify-between items-center px-4 pb-4 bg-black/80" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}>
+      <div
+        className="flex justify-between items-center px-4 pb-4 bg-black/80"
+        style={{ paddingTop: 'max(env(safe-area-inset-top, 0px) + 16px, 52px)' }}
+      >
         <h2 className="text-xl font-black uppercase text-white">Photo Estimate</h2>
-        <button onClick={onClose} className="text-slate-400 p-2">
+        <button onClick={onClose} className="text-slate-400 p-2 -mr-2 active:bg-white/10 rounded-full">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
