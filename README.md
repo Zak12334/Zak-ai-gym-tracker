@@ -81,6 +81,12 @@ CREATE TABLE profiles (
   split_rest_pattern INTEGER,
   split_current_day_index INTEGER,
   split_start_date DATE,
+  ramadan_mode BOOLEAN DEFAULT false,
+  ramadan_start DATE,
+  ramadan_end DATE,
+  ramadan_recovery_weeks INTEGER DEFAULT 2,
+  custom_calorie_goal INTEGER,
+  custom_protein_goal REAL,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
