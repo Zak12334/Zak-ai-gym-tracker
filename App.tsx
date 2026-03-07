@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { WorkoutSession, DayType, Exercise, Set, UserProfile, FoodLog, WaterLog, NutritionGoals, SplitType, PRESET_SPLITS } from './types';
+import { WorkoutSession, DayType, Exercise, Set, UserProfile, FoodLog, WaterLog, NutritionGoals, SplitType, PRESET_SPLITS, SavedMeal } from './types';
 import { getWorkoutForToday, getWorkoutForUser, generateUUID, formatDuration, calculateSmartTarget, getDaysSinceLastWorkoutType } from './utils';
 import { SmartTargets } from './components/SmartTargets';
 import { NutritionView } from './components/NutritionView';
@@ -40,6 +40,7 @@ const App: React.FC = () => {
   // Nutrition tracking state
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
   const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
+  const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showPhotoEstimator, setShowPhotoEstimator] = useState(false);
 
@@ -158,6 +159,62 @@ const App: React.FC = () => {
     if (error) {
       console.error("Error deleting water log:", error);
     }
+  };
+
+  // Saved meals functions - for quick one-tap logging
+  const addSavedMeal = async (meal: Omit<SavedMeal, 'id' | 'profile_id' | 'created_at'>) => {
+    if (!profile) return;
+
+    const newMeal: SavedMeal = {
+      id: generateUUID(),
+      profile_id: profile.id,
+      ...meal,
+      created_at: Date.now()
+    };
+
+    // Optimistic update
+    setSavedMeals(prev => [newMeal, ...prev]);
+
+    const { error } = await supabase
+      .from('saved_meals')
+      .insert([newMeal]);
+
+    if (error) {
+      console.error("Error saving meal:", error);
+      setSavedMeals(prev => prev.filter(m => m.id !== newMeal.id));
+    }
+  };
+
+  const deleteSavedMeal = async (id: string) => {
+    // Optimistic update
+    setSavedMeals(prev => prev.filter(m => m.id !== id));
+
+    const { error } = await supabase
+      .from('saved_meals')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error("Error deleting saved meal:", error);
+    }
+  };
+
+  const addFoodFromSavedMeal = (meal: SavedMeal) => {
+    const today = new Date().toISOString().split('T')[0];
+    const newFood: FoodLog = {
+      id: generateUUID(),
+      date: today,
+      timestamp: Date.now(),
+      name: meal.name,
+      calories: meal.calories,
+      protein: meal.protein,
+      carbs: meal.carbs,
+      fat: meal.fat,
+      amount: meal.amount,
+      unit: meal.unit,
+      source: 'manual'
+    };
+    addFoodLog(newFood);
   };
 
   const handleScanBarcode = () => {
@@ -374,6 +431,19 @@ const App: React.FC = () => {
             amount: w.amount
           })));
         }
+
+        // Load Saved Meals from Supabase
+        const { data: savedMealsData, error: savedMealsError } = await supabase
+          .from('saved_meals')
+          .select('*')
+          .eq('profile_id', profileData.id)
+          .order('created_at', { ascending: false });
+
+        if (savedMealsError) {
+          console.error("Saved meals load error:", savedMealsError);
+        } else if (savedMealsData) {
+          setSavedMeals(savedMealsData);
+        }
       } else {
         // No profile found for this user - needs setup
         setNeedsProfileSetup(true);
@@ -408,6 +478,7 @@ const App: React.FC = () => {
     setHistory([]);
     setFoodLogs([]);
     setWaterLogs([]);
+    setSavedMeals([]);
     setActiveSession(null);
     persistActiveSession(null);
     setTimer(0);
@@ -1708,10 +1779,14 @@ const App: React.FC = () => {
           foods={foodLogs}
           waterLogs={waterLogs}
           goals={nutritionGoals}
+          savedMeals={savedMeals}
           onAddFood={addFoodLog}
           onAddWater={addWaterLog}
           onDeleteFood={deleteFoodLog}
           onDeleteWater={deleteWaterLog}
+          onSaveMeal={addSavedMeal}
+          onDeleteSavedMeal={deleteSavedMeal}
+          onAddFromSavedMeal={addFoodFromSavedMeal}
           onBack={() => setView('Home')}
           onScanBarcode={handleScanBarcode}
           onPhotoEstimate={handlePhotoEstimate}

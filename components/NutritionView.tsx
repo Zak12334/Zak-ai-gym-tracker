@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FoodLog, WaterLog, NutritionGoals } from '../types';
+import { FoodLog, WaterLog, NutritionGoals, SavedMeal } from '../types';
 import { FOOD_DATABASE, searchFood, calculateNutrition, parseNaturalInput, FoodItem } from '../foodDatabase';
 import { generateUUID } from '../utils';
 
@@ -7,10 +7,14 @@ interface NutritionViewProps {
   foods: FoodLog[];
   waterLogs: WaterLog[];
   goals: NutritionGoals;
+  savedMeals: SavedMeal[];
   onAddFood: (food: FoodLog) => void;
   onAddWater: (water: WaterLog) => void;
   onDeleteFood: (id: string) => void;
   onDeleteWater: (id: string) => void;
+  onSaveMeal: (meal: Omit<SavedMeal, 'id' | 'profile_id' | 'created_at'>) => void;
+  onDeleteSavedMeal: (id: string) => void;
+  onAddFromSavedMeal: (meal: SavedMeal) => void;
   onBack: () => void;
   onScanBarcode: () => void;
   onPhotoEstimate: () => void;
@@ -20,10 +24,14 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   foods,
   waterLogs,
   goals,
+  savedMeals,
   onAddFood,
   onAddWater,
   onDeleteFood,
   onDeleteWater,
+  onSaveMeal,
+  onDeleteSavedMeal,
+  onAddFromSavedMeal,
   onBack,
   onScanBarcode,
   onPhotoEstimate
@@ -85,8 +93,9 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     };
   }, [showQuickAdd]);
 
-  // Manual entry states
-  const [isManualMode, setIsManualMode] = useState(false);
+  // Quick add mode: 'search' | 'saved' | 'manual'
+  type QuickAddMode = 'search' | 'saved' | 'manual';
+  const [quickAddMode, setQuickAddMode] = useState<QuickAddMode>('saved'); // Default to saved for quick access
   const [manualName, setManualName] = useState('');
   const [manualCalories, setManualCalories] = useState('');
   const [manualProtein, setManualProtein] = useState('');
@@ -266,7 +275,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     setManualFat('');
     setManualAmount('100');
     setManualUnit('g');
-    setIsManualMode(false);
+    setQuickAddMode('saved');
     setShowQuickAdd(false);
   };
 
@@ -275,7 +284,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     setSelectedFood(null);
     setSearchResults([]);
     setQuickAddInput('');
-    setIsManualMode(false);
+    setQuickAddMode('saved');
     setManualName('');
     setManualCalories('');
     setManualProtein('');
@@ -562,29 +571,81 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
             style={{ paddingBottom: keyboardVisible ? '1rem' : '2rem' }}
           >
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-black uppercase">{isManualMode ? 'Manual Entry' : 'Quick Add'}</h3>
+              <h3 className="text-xl font-black uppercase">
+                {quickAddMode === 'saved' ? 'Saved Meals' : quickAddMode === 'manual' ? 'Manual Entry' : 'Quick Add'}
+              </h3>
               <button onClick={resetQuickAdd} className="text-slate-500 p-2">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
-            {/* Mode Toggle */}
-            <div className="flex gap-2 mb-4">
+            {/* Mode Toggle - 3 tabs */}
+            <div className="flex gap-1 mb-4 bg-slate-800 p-1 rounded-xl">
               <button
-                onClick={() => setIsManualMode(false)}
-                className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${!isManualMode ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
+                onClick={() => setQuickAddMode('saved')}
+                className={`flex-1 py-2.5 rounded-lg font-bold text-xs transition-all ${quickAddMode === 'saved' ? 'bg-green-600 text-white' : 'text-slate-400'}`}
               >
-                Search Food
+                Saved
               </button>
               <button
-                onClick={() => setIsManualMode(true)}
-                className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${isManualMode ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
+                onClick={() => setQuickAddMode('search')}
+                className={`flex-1 py-2.5 rounded-lg font-bold text-xs transition-all ${quickAddMode === 'search' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}
               >
-                Enter Values
+                Search
+              </button>
+              <button
+                onClick={() => setQuickAddMode('manual')}
+                className={`flex-1 py-2.5 rounded-lg font-bold text-xs transition-all ${quickAddMode === 'manual' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
+              >
+                Manual
               </button>
             </div>
 
-            {isManualMode ? (
+            {/* SAVED MEALS TAB */}
+            {quickAddMode === 'saved' && (
+              <>
+                {savedMeals.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-4xl mb-3">🍽️</div>
+                    <p className="text-slate-400 font-bold mb-2">No saved meals yet</p>
+                    <p className="text-slate-600 text-sm">Save foods from your log to quickly add them later</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                    {savedMeals.map(meal => (
+                      <div
+                        key={meal.id}
+                        className="bg-slate-800/50 rounded-xl p-3 flex justify-between items-center group"
+                      >
+                        <button
+                          onClick={() => {
+                            onAddFromSavedMeal(meal);
+                            resetQuickAdd();
+                          }}
+                          className="flex-1 text-left"
+                        >
+                          <p className="font-bold text-white">{meal.name}</p>
+                          <p className="text-[10px] text-slate-500">
+                            {meal.amount}{meal.unit} • {meal.calories} cal • {meal.protein}g protein
+                          </p>
+                        </button>
+                        <button
+                          onClick={() => onDeleteSavedMeal(meal.id)}
+                          className="p-2 text-slate-700 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-[10px] text-slate-600 text-center mt-4">Tap a meal to add it to today's log</p>
+              </>
+            )}
+
+            {quickAddMode === 'manual' ? (
               /* Manual Entry Mode */
               <>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-3">Enter your own values from the label</p>
@@ -685,7 +746,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   Add Food
                 </button>
               </>
-            ) : !selectedFood ? (
+            ) : quickAddMode === 'search' && !selectedFood ? (
               /* Search Mode */
               <>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-3">Type food with amount (e.g., "250g chicken" or "2 eggs")</p>
@@ -729,7 +790,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   Add Food
                 </button>
               </>
-            ) : (
+            ) : quickAddMode === 'search' && selectedFood ? (
               <>
                 <div className="bg-slate-800 rounded-2xl p-4 mb-4">
                   <p className="font-black text-xl text-white mb-1">{selectedFood.name}</p>
@@ -818,7 +879,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   </button>
                 </div>
               </>
-            )}
+            ) : null}
           </div>
         </div>
       )}
@@ -854,26 +915,51 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           </div>
         ) : (
           <div className="space-y-2">
-            {selectedFoods.map(food => (
-              <div key={food.id} className="bg-slate-900/50 rounded-2xl p-4 border border-white/5 flex justify-between items-center">
-                <div>
-                  <p className="font-bold text-white">{food.name}</p>
-                  <p className="text-[10px] text-slate-500">{food.amount || food.grams}{food.unit || 'g'} • {food.source}</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="font-bold text-orange-400">{food.calories} cal</p>
-                    <p className="text-[10px] text-blue-400">{food.protein}g protein</p>
+            {selectedFoods.map(food => {
+              const isAlreadySaved = savedMeals.some(m => m.name === food.name && m.amount === (food.amount || 0) && m.calories === food.calories);
+              return (
+                <div key={food.id} className="bg-slate-900/50 rounded-2xl p-4 border border-white/5 flex justify-between items-center">
+                  <div>
+                    <p className="font-bold text-white">{food.name}</p>
+                    <p className="text-[10px] text-slate-500">{food.amount || food.grams}{food.unit || 'g'} • {food.source}</p>
                   </div>
-                  <button
-                    onClick={() => onDeleteFood(food.id)}
-                    className="text-red-900/50 hover:text-red-500 p-1"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="font-bold text-orange-400">{food.calories} cal</p>
+                      <p className="text-[10px] text-blue-400">{food.protein}g protein</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!isAlreadySaved) {
+                          onSaveMeal({
+                            name: food.name,
+                            calories: food.calories,
+                            protein: food.protein,
+                            carbs: food.carbs,
+                            fat: food.fat,
+                            amount: food.amount || 0,
+                            unit: food.unit || 'g'
+                          });
+                        }
+                      }}
+                      disabled={isAlreadySaved}
+                      className={`p-1.5 transition-colors ${isAlreadySaved ? 'text-green-500' : 'text-slate-700 hover:text-green-500 active:scale-95'}`}
+                      title={isAlreadySaved ? 'Already saved' : 'Save for quick access'}
+                    >
+                      <svg className="w-4 h-4" fill={isAlreadySaved ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => onDeleteFood(food.id)}
+                      className="text-red-900/50 hover:text-red-500 p-1"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

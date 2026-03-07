@@ -157,3 +157,17 @@ export interface NutritionGoals {
   fat: number;
   water: number; // ml
 }
+
+// Saved meals for quick one-tap logging (Ramadan mode etc.)
+export interface SavedMeal {
+  id: string;
+  profile_id: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  amount: number;
+  unit: 'g' | 'ml';
+  created_at: number;
+}
