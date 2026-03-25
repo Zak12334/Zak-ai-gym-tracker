@@ -395,6 +395,562 @@ export const FOOD_DATABASE: FoodItem[] = [
     fatPer100g: 0,
     defaultPortionG: 5,
     portionName: "1 scoop"
+  },
+
+  // More Proteins
+  {
+    name: "Cod",
+    aliases: ["cod fillet", "white fish"],
+    caloriesPer100g: 82,
+    proteinPer100g: 18,
+    carbsPer100g: 0,
+    fatPer100g: 0.7,
+    defaultPortionG: 150,
+    portionName: "1 fillet"
+  },
+  {
+    name: "Sardines (canned)",
+    aliases: ["sardines", "pilchards"],
+    caloriesPer100g: 208,
+    proteinPer100g: 25,
+    carbsPer100g: 0,
+    fatPer100g: 11,
+    defaultPortionG: 90,
+    portionName: "1 can"
+  },
+  {
+    name: "Mackerel",
+    aliases: ["smoked mackerel"],
+    caloriesPer100g: 305,
+    proteinPer100g: 19,
+    carbsPer100g: 0,
+    fatPer100g: 25,
+    defaultPortionG: 120,
+    portionName: "1 fillet"
+  },
+  {
+    name: "Pork Loin",
+    aliases: ["pork", "pork chop", "pork fillet"],
+    caloriesPer100g: 215,
+    proteinPer100g: 27,
+    carbsPer100g: 0,
+    fatPer100g: 11,
+    defaultPortionG: 150,
+    portionName: "1 chop"
+  },
+  {
+    name: "Bacon",
+    aliases: ["bacon rashers", "back bacon", "streaky bacon"],
+    caloriesPer100g: 541,
+    proteinPer100g: 37,
+    carbsPer100g: 0,
+    fatPer100g: 42,
+    defaultPortionG: 30,
+    portionName: "2 rashers"
+  },
+  {
+    name: "Ham",
+    aliases: ["cooked ham", "deli ham"],
+    caloriesPer100g: 107,
+    proteinPer100g: 17,
+    carbsPer100g: 1.5,
+    fatPer100g: 3.5,
+    defaultPortionG: 50,
+    portionName: "2 slices"
+  },
+  {
+    name: "Tofu",
+    aliases: ["firm tofu", "silken tofu"],
+    caloriesPer100g: 76,
+    proteinPer100g: 8,
+    carbsPer100g: 1.9,
+    fatPer100g: 4.8,
+    defaultPortionG: 150,
+    portionName: "1 serving"
+  },
+  {
+    name: "Chicken Wings",
+    aliases: ["wings"],
+    caloriesPer100g: 203,
+    proteinPer100g: 19,
+    carbsPer100g: 0,
+    fatPer100g: 14,
+    defaultPortionG: 100,
+    portionName: "3 wings"
+  },
+  {
+    name: "Edamame",
+    aliases: ["soy beans", "soybeans"],
+    caloriesPer100g: 122,
+    proteinPer100g: 11,
+    carbsPer100g: 10,
+    fatPer100g: 5,
+    defaultPortionG: 100,
+    portionName: "1 cup"
+  },
+
+  // More Carbs
+  {
+    name: "Quinoa (cooked)",
+    aliases: ["quinoa"],
+    caloriesPer100g: 120,
+    proteinPer100g: 4.4,
+    carbsPer100g: 22,
+    fatPer100g: 1.9,
+    defaultPortionG: 185,
+    portionName: "1 cup cooked"
+  },
+  {
+    name: "Couscous (cooked)",
+    aliases: ["couscous"],
+    caloriesPer100g: 112,
+    proteinPer100g: 3.8,
+    carbsPer100g: 23,
+    fatPer100g: 0.2,
+    defaultPortionG: 175,
+    portionName: "1 cup cooked"
+  },
+  {
+    name: "Pitta Bread",
+    aliases: ["pita", "pitta"],
+    caloriesPer100g: 265,
+    proteinPer100g: 9,
+    carbsPer100g: 55,
+    fatPer100g: 1.2,
+    defaultPortionG: 60,
+    portionName: "1 pitta"
+  },
+  {
+    name: "Tortilla Wrap",
+    aliases: ["wrap", "flour tortilla"],
+    caloriesPer100g: 305,
+    proteinPer100g: 8,
+    carbsPer100g: 52,
+    fatPer100g: 7,
+    defaultPortionG: 60,
+    portionName: "1 wrap"
+  },
+  {
+    name: "Naan Bread",
+    aliases: ["naan"],
+    caloriesPer100g: 317,
+    proteinPer100g: 9,
+    carbsPer100g: 50,
+    fatPer100g: 9,
+    defaultPortionG: 90,
+    portionName: "1 naan"
+  },
+  {
+    name: "Chickpeas (cooked)",
+    aliases: ["chickpeas", "chick peas", "garbanzo beans"],
+    caloriesPer100g: 164,
+    proteinPer100g: 8.9,
+    carbsPer100g: 27,
+    fatPer100g: 2.6,
+    defaultPortionG: 150,
+    portionName: "1 cup cooked"
+  },
+  {
+    name: "Lentils (cooked)",
+    aliases: ["lentils", "red lentils", "green lentils"],
+    caloriesPer100g: 116,
+    proteinPer100g: 9,
+    carbsPer100g: 20,
+    fatPer100g: 0.4,
+    defaultPortionG: 200,
+    portionName: "1 cup cooked"
+  },
+  {
+    name: "Kidney Beans (cooked)",
+    aliases: ["kidney beans", "red beans"],
+    caloriesPer100g: 127,
+    proteinPer100g: 8.7,
+    carbsPer100g: 23,
+    fatPer100g: 0.5,
+    defaultPortionG: 150,
+    portionName: "1 cup cooked"
+  },
+  {
+    name: "Corn (sweetcorn)",
+    aliases: ["sweetcorn", "corn on the cob", "sweet corn"],
+    caloriesPer100g: 86,
+    proteinPer100g: 3.3,
+    carbsPer100g: 19,
+    fatPer100g: 1.4,
+    defaultPortionG: 100,
+    portionName: "1 cup"
+  },
+  {
+    name: "Bagel",
+    aliases: ["bagels"],
+    caloriesPer100g: 250,
+    proteinPer100g: 10,
+    carbsPer100g: 48,
+    fatPer100g: 1.5,
+    defaultPortionG: 105,
+    portionName: "1 bagel"
+  },
+  {
+    name: "Granola",
+    aliases: ["muesli"],
+    caloriesPer100g: 471,
+    proteinPer100g: 10,
+    carbsPer100g: 64,
+    fatPer100g: 20,
+    defaultPortionG: 45,
+    portionName: "1 serving"
+  },
+
+  // More Dairy
+  {
+    name: "Skyr",
+    aliases: ["icelandic yogurt", "skyr yogurt"],
+    caloriesPer100g: 65,
+    proteinPer100g: 11,
+    carbsPer100g: 4,
+    fatPer100g: 0.2,
+    defaultPortionG: 150,
+    portionName: "1 pot"
+  },
+  {
+    name: "Butter",
+    aliases: [],
+    caloriesPer100g: 717,
+    proteinPer100g: 0.9,
+    carbsPer100g: 0.1,
+    fatPer100g: 81,
+    defaultPortionG: 10,
+    portionName: "1 tbsp"
+  },
+  {
+    name: "Cream Cheese",
+    aliases: ["philadelphia", "soft cheese"],
+    caloriesPer100g: 342,
+    proteinPer100g: 5.9,
+    carbsPer100g: 4.1,
+    fatPer100g: 34,
+    defaultPortionG: 30,
+    portionName: "2 tbsp"
+  },
+  {
+    name: "Mozzarella",
+    aliases: ["mozzarella cheese"],
+    caloriesPer100g: 280,
+    proteinPer100g: 28,
+    carbsPer100g: 2.2,
+    fatPer100g: 17,
+    defaultPortionG: 125,
+    portionName: "1 ball"
+  },
+  {
+    name: "Feta Cheese",
+    aliases: ["feta"],
+    caloriesPer100g: 264,
+    proteinPer100g: 14,
+    carbsPer100g: 4.1,
+    fatPer100g: 21,
+    defaultPortionG: 50,
+    portionName: "1 serving"
+  },
+
+  // More Fruits
+  {
+    name: "Mango",
+    aliases: ["mangoes"],
+    caloriesPer100g: 60,
+    proteinPer100g: 0.8,
+    carbsPer100g: 15,
+    fatPer100g: 0.4,
+    defaultPortionG: 165,
+    portionName: "1 cup sliced"
+  },
+  {
+    name: "Grapes",
+    aliases: ["grape", "red grapes", "green grapes"],
+    caloriesPer100g: 67,
+    proteinPer100g: 0.6,
+    carbsPer100g: 17,
+    fatPer100g: 0.4,
+    defaultPortionG: 150,
+    portionName: "1 cup"
+  },
+  {
+    name: "Pineapple",
+    aliases: [],
+    caloriesPer100g: 50,
+    proteinPer100g: 0.5,
+    carbsPer100g: 13,
+    fatPer100g: 0.1,
+    defaultPortionG: 165,
+    portionName: "1 cup chunks"
+  },
+  {
+    name: "Pear",
+    aliases: ["pears"],
+    caloriesPer100g: 57,
+    proteinPer100g: 0.4,
+    carbsPer100g: 15,
+    fatPer100g: 0.1,
+    defaultPortionG: 178,
+    portionName: "1 medium"
+  },
+  {
+    name: "Raspberries",
+    aliases: ["raspberry"],
+    caloriesPer100g: 52,
+    proteinPer100g: 1.2,
+    carbsPer100g: 12,
+    fatPer100g: 0.7,
+    defaultPortionG: 123,
+    portionName: "1 cup"
+  },
+  {
+    name: "Kiwi",
+    aliases: ["kiwifruit", "kiwi fruit"],
+    caloriesPer100g: 61,
+    proteinPer100g: 1.1,
+    carbsPer100g: 15,
+    fatPer100g: 0.5,
+    defaultPortionG: 76,
+    portionName: "1 medium"
+  },
+  {
+    name: "Watermelon",
+    aliases: [],
+    caloriesPer100g: 30,
+    proteinPer100g: 0.6,
+    carbsPer100g: 8,
+    fatPer100g: 0.2,
+    defaultPortionG: 280,
+    portionName: "2 cups cubed"
+  },
+  {
+    name: "Dates",
+    aliases: ["medjool dates", "date"],
+    caloriesPer100g: 277,
+    proteinPer100g: 1.8,
+    carbsPer100g: 75,
+    fatPer100g: 0.2,
+    defaultPortionG: 24,
+    portionName: "2 dates"
+  },
+
+  // More Vegetables
+  {
+    name: "Tomato",
+    aliases: ["tomatoes", "cherry tomatoes"],
+    caloriesPer100g: 18,
+    proteinPer100g: 0.9,
+    carbsPer100g: 3.9,
+    fatPer100g: 0.2,
+    defaultPortionG: 123,
+    portionName: "1 medium"
+  },
+  {
+    name: "Cucumber",
+    aliases: [],
+    caloriesPer100g: 15,
+    proteinPer100g: 0.7,
+    carbsPer100g: 3.6,
+    fatPer100g: 0.1,
+    defaultPortionG: 119,
+    portionName: "1 medium"
+  },
+  {
+    name: "Bell Pepper",
+    aliases: ["capsicum", "red pepper", "green pepper", "yellow pepper"],
+    caloriesPer100g: 31,
+    proteinPer100g: 1,
+    carbsPer100g: 6,
+    fatPer100g: 0.3,
+    defaultPortionG: 119,
+    portionName: "1 medium"
+  },
+  {
+    name: "Mushrooms",
+    aliases: ["mushroom", "button mushrooms"],
+    caloriesPer100g: 22,
+    proteinPer100g: 3.1,
+    carbsPer100g: 3.3,
+    fatPer100g: 0.3,
+    defaultPortionG: 100,
+    portionName: "1 cup"
+  },
+  {
+    name: "Lettuce",
+    aliases: ["romaine", "iceberg lettuce", "salad leaves"],
+    caloriesPer100g: 15,
+    proteinPer100g: 1.4,
+    carbsPer100g: 2.9,
+    fatPer100g: 0.2,
+    defaultPortionG: 47,
+    portionName: "1 cup shredded"
+  },
+  {
+    name: "Onion",
+    aliases: ["onions", "red onion", "white onion"],
+    caloriesPer100g: 40,
+    proteinPer100g: 1.1,
+    carbsPer100g: 9,
+    fatPer100g: 0.1,
+    defaultPortionG: 110,
+    portionName: "1 medium"
+  },
+  {
+    name: "Peas",
+    aliases: ["green peas", "frozen peas"],
+    caloriesPer100g: 81,
+    proteinPer100g: 5.4,
+    carbsPer100g: 14,
+    fatPer100g: 0.4,
+    defaultPortionG: 80,
+    portionName: "1 serving"
+  },
+  {
+    name: "Courgette",
+    aliases: ["zucchini"],
+    caloriesPer100g: 17,
+    proteinPer100g: 1.2,
+    carbsPer100g: 3.1,
+    fatPer100g: 0.3,
+    defaultPortionG: 196,
+    portionName: "1 medium"
+  },
+  {
+    name: "Kale",
+    aliases: [],
+    caloriesPer100g: 49,
+    proteinPer100g: 4.3,
+    carbsPer100g: 9,
+    fatPer100g: 0.9,
+    defaultPortionG: 67,
+    portionName: "1 cup raw"
+  },
+  {
+    name: "Celery",
+    aliases: [],
+    caloriesPer100g: 16,
+    proteinPer100g: 0.7,
+    carbsPer100g: 3,
+    fatPer100g: 0.2,
+    defaultPortionG: 64,
+    portionName: "2 stalks"
+  },
+
+  // More Nuts & Seeds
+  {
+    name: "Walnuts",
+    aliases: ["walnut"],
+    caloriesPer100g: 654,
+    proteinPer100g: 15,
+    carbsPer100g: 14,
+    fatPer100g: 65,
+    defaultPortionG: 30,
+    portionName: "1 handful"
+  },
+  {
+    name: "Cashews",
+    aliases: ["cashew nuts", "cashew"],
+    caloriesPer100g: 553,
+    proteinPer100g: 18,
+    carbsPer100g: 30,
+    fatPer100g: 44,
+    defaultPortionG: 30,
+    portionName: "1 handful"
+  },
+  {
+    name: "Pistachios",
+    aliases: ["pistachio"],
+    caloriesPer100g: 562,
+    proteinPer100g: 20,
+    carbsPer100g: 28,
+    fatPer100g: 45,
+    defaultPortionG: 30,
+    portionName: "1 handful"
+  },
+  {
+    name: "Chia Seeds",
+    aliases: ["chia"],
+    caloriesPer100g: 486,
+    proteinPer100g: 17,
+    carbsPer100g: 42,
+    fatPer100g: 31,
+    defaultPortionG: 15,
+    portionName: "1 tbsp"
+  },
+  {
+    name: "Flaxseeds",
+    aliases: ["linseed", "flax seeds"],
+    caloriesPer100g: 534,
+    proteinPer100g: 18,
+    carbsPer100g: 29,
+    fatPer100g: 42,
+    defaultPortionG: 15,
+    portionName: "1 tbsp"
+  },
+  {
+    name: "Sunflower Seeds",
+    aliases: ["sunflower seed"],
+    caloriesPer100g: 584,
+    proteinPer100g: 21,
+    carbsPer100g: 20,
+    fatPer100g: 51,
+    defaultPortionG: 30,
+    portionName: "1 handful"
+  },
+
+  // Oils & Condiments
+  {
+    name: "Olive Oil",
+    aliases: ["extra virgin olive oil", "vegetable oil"],
+    caloriesPer100g: 884,
+    proteinPer100g: 0,
+    carbsPer100g: 0,
+    fatPer100g: 100,
+    defaultPortionG: 14,
+    portionName: "1 tbsp"
+  },
+  {
+    name: "Hummus",
+    aliases: [],
+    caloriesPer100g: 177,
+    proteinPer100g: 7.9,
+    carbsPer100g: 14,
+    fatPer100g: 9.6,
+    defaultPortionG: 100,
+    portionName: "2 tbsp"
+  },
+
+  // Common Meals
+  {
+    name: "Porridge with Water",
+    aliases: ["oat porridge"],
+    caloriesPer100g: 55,
+    proteinPer100g: 2,
+    carbsPer100g: 10,
+    fatPer100g: 1,
+    defaultPortionG: 350,
+    portionName: "1 bowl"
+  },
+  {
+    name: "Protein Bar",
+    aliases: ["quest bar", "protein snack"],
+    caloriesPer100g: 380,
+    proteinPer100g: 33,
+    carbsPer100g: 36,
+    fatPer100g: 10,
+    defaultPortionG: 60,
+    portionName: "1 bar"
+  },
+  {
+    name: "Rice Cakes",
+    aliases: ["rice cake"],
+    caloriesPer100g: 387,
+    proteinPer100g: 8,
+    carbsPer100g: 82,
+    fatPer100g: 2.8,
+    defaultPortionG: 9,
+    portionName: "1 cake"
   }
 ];
 
