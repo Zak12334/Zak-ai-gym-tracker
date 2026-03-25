@@ -951,6 +951,908 @@ export const FOOD_DATABASE: FoodItem[] = [
     fatPer100g: 2.8,
     defaultPortionG: 9,
     portionName: "1 cake"
+  },
+
+  // Fast Food
+  {
+    name: "McDonald's Big Mac",
+    aliases: ["big mac", "bigmac"],
+    caloriesPer100g: 257,
+    proteinPer100g: 13,
+    carbsPer100g: 24,
+    fatPer100g: 12,
+    defaultPortionG: 214,
+    portionName: "1 burger"
+  },
+  {
+    name: "McDonald's Fries (Large)",
+    aliases: ["mcdonalds fries", "mcdonald's chips", "large fries", "large chips"],
+    caloriesPer100g: 323,
+    proteinPer100g: 3.8,
+    carbsPer100g: 44,
+    fatPer100g: 14,
+    defaultPortionG: 154,
+    portionName: "1 large portion"
+  },
+  {
+    name: "McDonald's Fries (Medium)",
+    aliases: ["medium fries", "medium chips", "mcdonald's medium fries"],
+    caloriesPer100g: 323,
+    proteinPer100g: 3.8,
+    carbsPer100g: 44,
+    fatPer100g: 14,
+    defaultPortionG: 114,
+    portionName: "1 medium portion"
+  },
+  {
+    name: "McDonald's McChicken Sandwich",
+    aliases: ["mcchicken", "mc chicken"],
+    caloriesPer100g: 234,
+    proteinPer100g: 12,
+    carbsPer100g: 26,
+    fatPer100g: 9,
+    defaultPortionG: 160,
+    portionName: "1 sandwich"
+  },
+  {
+    name: "McDonald's Nuggets (6 piece)",
+    aliases: ["mcnuggets", "chicken nuggets mcdonalds", "6 nuggets"],
+    caloriesPer100g: 260,
+    proteinPer100g: 14,
+    carbsPer100g: 17,
+    fatPer100g: 14,
+    defaultPortionG: 101,
+    portionName: "6 nuggets"
+  },
+  {
+    name: "KFC Original Chicken",
+    aliases: ["kfc chicken", "kfc original", "kfc piece"],
+    caloriesPer100g: 240,
+    proteinPer100g: 21,
+    carbsPer100g: 9,
+    fatPer100g: 14,
+    defaultPortionG: 130,
+    portionName: "1 piece"
+  },
+  {
+    name: "KFC Zinger Burger",
+    aliases: ["zinger", "kfc zinger"],
+    caloriesPer100g: 256,
+    proteinPer100g: 14,
+    carbsPer100g: 26,
+    fatPer100g: 10,
+    defaultPortionG: 185,
+    portionName: "1 burger"
+  },
+  {
+    name: "Burger King Whopper",
+    aliases: ["whopper"],
+    caloriesPer100g: 241,
+    proteinPer100g: 12,
+    carbsPer100g: 21,
+    fatPer100g: 12,
+    defaultPortionG: 291,
+    portionName: "1 burger"
+  },
+  {
+    name: "Domino's Pizza (Cheese & Tomato)",
+    aliases: ["dominos pizza", "cheese pizza", "pizza margherita"],
+    caloriesPer100g: 250,
+    proteinPer100g: 10,
+    carbsPer100g: 33,
+    fatPer100g: 8,
+    defaultPortionG: 120,
+    portionName: "1 slice"
+  },
+  {
+    name: "Domino's Pizza (Pepperoni)",
+    aliases: ["pepperoni pizza", "dominos pepperoni"],
+    caloriesPer100g: 280,
+    proteinPer100g: 12,
+    carbsPer100g: 31,
+    fatPer100g: 12,
+    defaultPortionG: 120,
+    portionName: "1 slice"
+  },
+  {
+    name: "Subway 6\" Chicken Teriyaki",
+    aliases: ["subway chicken teriyaki", "chicken teriyaki sub"],
+    caloriesPer100g: 176,
+    proteinPer100g: 14,
+    carbsPer100g: 22,
+    fatPer100g: 3,
+    defaultPortionG: 240,
+    portionName: "6 inch sub"
+  },
+  {
+    name: "Fish and Chips",
+    aliases: ["fish & chips", "chippy fish and chips"],
+    caloriesPer100g: 200,
+    proteinPer100g: 10,
+    carbsPer100g: 22,
+    fatPer100g: 8,
+    defaultPortionG: 400,
+    portionName: "1 portion"
+  },
+  {
+    name: "Doner Kebab",
+    aliases: ["kebab", "donor kebab", "doner meat"],
+    caloriesPer100g: 230,
+    proteinPer100g: 18,
+    carbsPer100g: 10,
+    fatPer100g: 14,
+    defaultPortionG: 350,
+    portionName: "1 portion"
+  },
+  {
+    name: "Shawarma",
+    aliases: ["chicken shawarma", "lamb shawarma"],
+    caloriesPer100g: 210,
+    proteinPer100g: 16,
+    carbsPer100g: 12,
+    fatPer100g: 11,
+    defaultPortionG: 300,
+    portionName: "1 wrap"
+  },
+
+  // Snacks & Crisps
+  {
+    name: "Walkers Crisps",
+    aliases: ["crisps", "chips", "potato chips", "walkers"],
+    caloriesPer100g: 527,
+    proteinPer100g: 6,
+    carbsPer100g: 55,
+    fatPer100g: 31,
+    defaultPortionG: 25,
+    portionName: "1 bag"
+  },
+  {
+    name: "Pringles",
+    aliases: ["pringles original"],
+    caloriesPer100g: 536,
+    proteinPer100g: 4.5,
+    carbsPer100g: 54,
+    fatPer100g: 34,
+    defaultPortionG: 40,
+    portionName: "1 serving"
+  },
+  {
+    name: "Doritos",
+    aliases: ["doritos nacho cheese", "doritos cool original"],
+    caloriesPer100g: 490,
+    proteinPer100g: 7,
+    carbsPer100g: 61,
+    fatPer100g: 23,
+    defaultPortionG: 25,
+    portionName: "1 bag"
+  },
+  {
+    name: "Popcorn (salted)",
+    aliases: ["popcorn", "salted popcorn"],
+    caloriesPer100g: 480,
+    proteinPer100g: 9,
+    carbsPer100g: 57,
+    fatPer100g: 24,
+    defaultPortionG: 30,
+    portionName: "1 cup"
+  },
+  {
+    name: "Chocolate Digestives",
+    aliases: ["chocolate biscuits", "digestive biscuits chocolate"],
+    caloriesPer100g: 493,
+    proteinPer100g: 6.3,
+    carbsPer100g: 63,
+    fatPer100g: 24,
+    defaultPortionG: 14,
+    portionName: "1 biscuit"
+  },
+  {
+    name: "Digestive Biscuits",
+    aliases: ["digestives", "plain digestives"],
+    caloriesPer100g: 471,
+    proteinPer100g: 7,
+    carbsPer100g: 66,
+    fatPer100g: 20,
+    defaultPortionG: 14,
+    portionName: "1 biscuit"
+  },
+  {
+    name: "Hobnobs",
+    aliases: ["hobnob"],
+    caloriesPer100g: 467,
+    proteinPer100g: 8,
+    carbsPer100g: 63,
+    fatPer100g: 20,
+    defaultPortionG: 13,
+    portionName: "1 biscuit"
+  },
+
+  // Chocolate & Sweets
+  {
+    name: "Milk Chocolate",
+    aliases: ["chocolate bar", "cadbury chocolate", "dairy milk"],
+    caloriesPer100g: 535,
+    proteinPer100g: 7.7,
+    carbsPer100g: 59,
+    fatPer100g: 30,
+    defaultPortionG: 45,
+    portionName: "1 bar"
+  },
+  {
+    name: "Dark Chocolate",
+    aliases: ["dark choc", "70% chocolate", "85% chocolate"],
+    caloriesPer100g: 598,
+    proteinPer100g: 5,
+    carbsPer100g: 46,
+    fatPer100g: 43,
+    defaultPortionG: 30,
+    portionName: "3 squares"
+  },
+  {
+    name: "Kitkat",
+    aliases: ["kit kat"],
+    caloriesPer100g: 518,
+    proteinPer100g: 6.3,
+    carbsPer100g: 63,
+    fatPer100g: 27,
+    defaultPortionG: 41.5,
+    portionName: "1 bar (2 finger)"
+  },
+  {
+    name: "Snickers",
+    aliases: ["snickers bar"],
+    caloriesPer100g: 488,
+    proteinPer100g: 8,
+    carbsPer100g: 58,
+    fatPer100g: 25,
+    defaultPortionG: 52.7,
+    portionName: "1 bar"
+  },
+  {
+    name: "Mars Bar",
+    aliases: ["mars"],
+    caloriesPer100g: 449,
+    proteinPer100g: 4.2,
+    carbsPer100g: 69,
+    fatPer100g: 17,
+    defaultPortionG: 51,
+    portionName: "1 bar"
+  },
+  {
+    name: "Haribo",
+    aliases: ["gummy bears", "jelly sweets", "gummy sweets"],
+    caloriesPer100g: 340,
+    proteinPer100g: 6.5,
+    carbsPer100g: 77,
+    fatPer100g: 0.5,
+    defaultPortionG: 100,
+    portionName: "1 bag"
+  },
+
+  // Breakfast Cereals
+  {
+    name: "Weetabix",
+    aliases: ["weetabix biscuits"],
+    caloriesPer100g: 362,
+    proteinPer100g: 12,
+    carbsPer100g: 69,
+    fatPer100g: 2,
+    defaultPortionG: 38,
+    portionName: "2 biscuits"
+  },
+  {
+    name: "Corn Flakes",
+    aliases: ["cornflakes", "kellogg's corn flakes"],
+    caloriesPer100g: 378,
+    proteinPer100g: 7.5,
+    carbsPer100g: 84,
+    fatPer100g: 0.8,
+    defaultPortionG: 30,
+    portionName: "1 bowl"
+  },
+  {
+    name: "Coco Pops",
+    aliases: ["cocoa pops", "chocolate cereal"],
+    caloriesPer100g: 381,
+    proteinPer100g: 5.5,
+    carbsPer100g: 84,
+    fatPer100g: 2.8,
+    defaultPortionG: 30,
+    portionName: "1 bowl"
+  },
+  {
+    name: "Special K",
+    aliases: ["special k cereal"],
+    caloriesPer100g: 379,
+    proteinPer100g: 15,
+    carbsPer100g: 75,
+    fatPer100g: 1.5,
+    defaultPortionG: 30,
+    portionName: "1 bowl"
+  },
+  {
+    name: "Shreddies",
+    aliases: [],
+    caloriesPer100g: 362,
+    proteinPer100g: 10,
+    carbsPer100g: 73,
+    fatPer100g: 2.1,
+    defaultPortionG: 45,
+    portionName: "1 bowl"
+  },
+
+  // Drinks
+  {
+    name: "Orange Juice",
+    aliases: ["oj", "fresh orange juice"],
+    caloriesPer100g: 45,
+    proteinPer100g: 0.7,
+    carbsPer100g: 10,
+    fatPer100g: 0.2,
+    defaultPortionG: 200,
+    portionName: "1 glass"
+  },
+  {
+    name: "Apple Juice",
+    aliases: ["apple juice"],
+    caloriesPer100g: 46,
+    proteinPer100g: 0.1,
+    carbsPer100g: 11,
+    fatPer100g: 0.1,
+    defaultPortionG: 200,
+    portionName: "1 glass"
+  },
+  {
+    name: "Coca-Cola",
+    aliases: ["coke", "coca cola", "cola"],
+    caloriesPer100g: 42,
+    proteinPer100g: 0,
+    carbsPer100g: 11,
+    fatPer100g: 0,
+    defaultPortionG: 330,
+    portionName: "1 can"
+  },
+  {
+    name: "Diet Coke",
+    aliases: ["diet cola", "coke zero", "pepsi max"],
+    caloriesPer100g: 1,
+    proteinPer100g: 0,
+    carbsPer100g: 0,
+    fatPer100g: 0,
+    defaultPortionG: 330,
+    portionName: "1 can"
+  },
+  {
+    name: "Lucozade Sport",
+    aliases: ["lucozade", "sports drink"],
+    caloriesPer100g: 26,
+    proteinPer100g: 0,
+    carbsPer100g: 6.4,
+    fatPer100g: 0,
+    defaultPortionG: 500,
+    portionName: "1 bottle"
+  },
+  {
+    name: "Whole Milk (glass)",
+    aliases: ["glass of milk"],
+    caloriesPer100g: 61,
+    proteinPer100g: 3.2,
+    carbsPer100g: 4.8,
+    fatPer100g: 3.3,
+    defaultPortionG: 200,
+    portionName: "1 glass"
+  },
+  {
+    name: "Coffee (black)",
+    aliases: ["black coffee", "espresso", "americano"],
+    caloriesPer100g: 2,
+    proteinPer100g: 0.3,
+    carbsPer100g: 0,
+    fatPer100g: 0,
+    defaultPortionG: 240,
+    portionName: "1 mug"
+  },
+  {
+    name: "Coffee with Milk",
+    aliases: ["flat white", "cappuccino", "latte", "white coffee"],
+    caloriesPer100g: 40,
+    proteinPer100g: 2,
+    carbsPer100g: 3.5,
+    fatPer100g: 1.8,
+    defaultPortionG: 240,
+    portionName: "1 mug"
+  },
+  {
+    name: "Tea with Milk",
+    aliases: ["tea", "builder's tea", "cup of tea"],
+    caloriesPer100g: 16,
+    proteinPer100g: 0.9,
+    carbsPer100g: 1.8,
+    fatPer100g: 0.6,
+    defaultPortionG: 240,
+    portionName: "1 mug"
+  },
+  {
+    name: "Smoothie (fruit)",
+    aliases: ["fruit smoothie"],
+    caloriesPer100g: 60,
+    proteinPer100g: 0.7,
+    carbsPer100g: 14,
+    fatPer100g: 0.3,
+    defaultPortionG: 250,
+    portionName: "1 bottle"
+  },
+
+  // Sauces & Condiments
+  {
+    name: "Ketchup",
+    aliases: ["tomato ketchup", "heinz ketchup", "tomato sauce"],
+    caloriesPer100g: 101,
+    proteinPer100g: 1.5,
+    carbsPer100g: 24,
+    fatPer100g: 0.1,
+    defaultPortionG: 15,
+    portionName: "1 tbsp"
+  },
+  {
+    name: "Mayonnaise",
+    aliases: ["mayo", "hellmann's", "full fat mayo"],
+    caloriesPer100g: 680,
+    proteinPer100g: 1,
+    carbsPer100g: 1.3,
+    fatPer100g: 75,
+    defaultPortionG: 15,
+    portionName: "1 tbsp"
+  },
+  {
+    name: "BBQ Sauce",
+    aliases: ["bbq sauce", "barbecue sauce"],
+    caloriesPer100g: 170,
+    proteinPer100g: 1.1,
+    carbsPer100g: 40,
+    fatPer100g: 0.4,
+    defaultPortionG: 30,
+    portionName: "2 tbsp"
+  },
+  {
+    name: "Hot Sauce",
+    aliases: ["sriracha", "tabasco", "chilli sauce"],
+    caloriesPer100g: 35,
+    proteinPer100g: 0.5,
+    carbsPer100g: 8,
+    fatPer100g: 0,
+    defaultPortionG: 10,
+    portionName: "1 tsp"
+  },
+  {
+    name: "Soy Sauce",
+    aliases: ["soya sauce"],
+    caloriesPer100g: 53,
+    proteinPer100g: 5.5,
+    carbsPer100g: 5.6,
+    fatPer100g: 0.1,
+    defaultPortionG: 15,
+    portionName: "1 tbsp"
+  },
+  {
+    name: "Sweet Chilli Sauce",
+    aliases: ["sweet chili sauce"],
+    caloriesPer100g: 135,
+    proteinPer100g: 0.4,
+    carbsPer100g: 33,
+    fatPer100g: 0.1,
+    defaultPortionG: 30,
+    portionName: "2 tbsp"
+  },
+  {
+    name: "Ranch Dressing",
+    aliases: ["ranch sauce", "ranch dip"],
+    caloriesPer100g: 321,
+    proteinPer100g: 1,
+    carbsPer100g: 7,
+    fatPer100g: 32,
+    defaultPortionG: 30,
+    portionName: "2 tbsp"
+  },
+  {
+    name: "Salad Dressing (Caesar)",
+    aliases: ["caesar dressing", "caesar salad dressing"],
+    caloriesPer100g: 340,
+    proteinPer100g: 2,
+    carbsPer100g: 10,
+    fatPer100g: 34,
+    defaultPortionG: 30,
+    portionName: "2 tbsp"
+  },
+  {
+    name: "Honey",
+    aliases: [],
+    caloriesPer100g: 304,
+    proteinPer100g: 0.3,
+    carbsPer100g: 82,
+    fatPer100g: 0,
+    defaultPortionG: 21,
+    portionName: "1 tbsp"
+  },
+  {
+    name: "Jam",
+    aliases: ["strawberry jam", "raspberry jam", "jelly"],
+    caloriesPer100g: 250,
+    proteinPer100g: 0.4,
+    carbsPer100g: 63,
+    fatPer100g: 0.1,
+    defaultPortionG: 20,
+    portionName: "1 tbsp"
+  },
+  {
+    name: "Nutella",
+    aliases: ["chocolate hazelnut spread", "hazelnut spread"],
+    caloriesPer100g: 539,
+    proteinPer100g: 6.3,
+    carbsPer100g: 57,
+    fatPer100g: 31,
+    defaultPortionG: 30,
+    portionName: "2 tbsp"
+  },
+  {
+    name: "Mustard",
+    aliases: ["dijon mustard", "wholegrain mustard", "yellow mustard"],
+    caloriesPer100g: 60,
+    proteinPer100g: 3.7,
+    carbsPer100g: 5.3,
+    fatPer100g: 3.3,
+    defaultPortionG: 10,
+    portionName: "1 tsp"
+  },
+
+  // Common Meals / Takeaway
+  {
+    name: "Fried Rice",
+    aliases: ["egg fried rice", "chinese fried rice"],
+    caloriesPer100g: 163,
+    proteinPer100g: 3.6,
+    carbsPer100g: 26,
+    fatPer100g: 5,
+    defaultPortionG: 250,
+    portionName: "1 portion"
+  },
+  {
+    name: "Chicken Curry",
+    aliases: ["curry", "chicken tikka masala", "indian chicken curry"],
+    caloriesPer100g: 150,
+    proteinPer100g: 12,
+    carbsPer100g: 8,
+    fatPer100g: 8,
+    defaultPortionG: 300,
+    portionName: "1 portion"
+  },
+  {
+    name: "Biryani",
+    aliases: ["chicken biryani", "lamb biryani"],
+    caloriesPer100g: 168,
+    proteinPer100g: 9,
+    carbsPer100g: 24,
+    fatPer100g: 4,
+    defaultPortionG: 350,
+    portionName: "1 portion"
+  },
+  {
+    name: "Chow Mein",
+    aliases: ["chicken chow mein", "noodles stir fry"],
+    caloriesPer100g: 133,
+    proteinPer100g: 7,
+    carbsPer100g: 18,
+    fatPer100g: 3.5,
+    defaultPortionG: 300,
+    portionName: "1 portion"
+  },
+  {
+    name: "Spaghetti Bolognese",
+    aliases: ["bolognese", "spag bol", "pasta bolognese"],
+    caloriesPer100g: 131,
+    proteinPer100g: 9,
+    carbsPer100g: 15,
+    fatPer100g: 4,
+    defaultPortionG: 400,
+    portionName: "1 plate"
+  },
+  {
+    name: "Lasagne",
+    aliases: ["lasagna"],
+    caloriesPer100g: 148,
+    proteinPer100g: 9,
+    carbsPer100g: 14,
+    fatPer100g: 6,
+    defaultPortionG: 400,
+    portionName: "1 portion"
+  },
+  {
+    name: "Chilli Con Carne",
+    aliases: ["chili con carne", "chilli"],
+    caloriesPer100g: 129,
+    proteinPer100g: 10,
+    carbsPer100g: 12,
+    fatPer100g: 4,
+    defaultPortionG: 350,
+    portionName: "1 bowl"
+  },
+  {
+    name: "Soup (tomato)",
+    aliases: ["tomato soup", "heinz tomato soup"],
+    caloriesPer100g: 47,
+    proteinPer100g: 1.2,
+    carbsPer100g: 8.8,
+    fatPer100g: 1,
+    defaultPortionG: 400,
+    portionName: "1 bowl"
+  },
+  {
+    name: "Soup (chicken)",
+    aliases: ["chicken soup", "chicken noodle soup"],
+    caloriesPer100g: 35,
+    proteinPer100g: 2.5,
+    carbsPer100g: 4,
+    fatPer100g: 1,
+    defaultPortionG: 400,
+    portionName: "1 bowl"
+  },
+  {
+    name: "Burrito",
+    aliases: ["chicken burrito", "beef burrito"],
+    caloriesPer100g: 197,
+    proteinPer100g: 10,
+    carbsPer100g: 26,
+    fatPer100g: 6,
+    defaultPortionG: 300,
+    portionName: "1 burrito"
+  },
+  {
+    name: "Sushi (salmon roll)",
+    aliases: ["sushi", "salmon sushi", "maki roll"],
+    caloriesPer100g: 150,
+    proteinPer100g: 7,
+    carbsPer100g: 22,
+    fatPer100g: 3,
+    defaultPortionG: 170,
+    portionName: "6 pieces"
+  },
+  {
+    name: "Scrambled Eggs on Toast",
+    aliases: ["eggs on toast"],
+    caloriesPer100g: 150,
+    proteinPer100g: 9,
+    carbsPer100g: 14,
+    fatPer100g: 6.5,
+    defaultPortionG: 250,
+    portionName: "1 plate"
+  },
+  {
+    name: "Full English Breakfast",
+    aliases: ["full english", "fry up", "full breakfast"],
+    caloriesPer100g: 170,
+    proteinPer100g: 10,
+    carbsPer100g: 10,
+    fatPer100g: 11,
+    defaultPortionG: 600,
+    portionName: "1 plate"
+  },
+  {
+    name: "Beans on Toast",
+    aliases: ["baked beans on toast"],
+    caloriesPer100g: 100,
+    proteinPer100g: 5,
+    carbsPer100g: 17,
+    fatPer100g: 1,
+    defaultPortionG: 330,
+    portionName: "1 plate"
+  },
+  {
+    name: "Cheese on Toast",
+    aliases: ["cheese toast", "grilled cheese"],
+    caloriesPer100g: 280,
+    proteinPer100g: 13,
+    carbsPer100g: 26,
+    fatPer100g: 14,
+    defaultPortionG: 120,
+    portionName: "1 serving"
+  },
+  {
+    name: "Chicken Stir Fry",
+    aliases: ["stir fry"],
+    caloriesPer100g: 120,
+    proteinPer100g: 12,
+    carbsPer100g: 8,
+    fatPer100g: 4.5,
+    defaultPortionG: 300,
+    portionName: "1 portion"
+  },
+
+  // Bread & Bakery
+  {
+    name: "Croissant",
+    aliases: [],
+    caloriesPer100g: 406,
+    proteinPer100g: 8.2,
+    carbsPer100g: 46,
+    fatPer100g: 21,
+    defaultPortionG: 57,
+    portionName: "1 croissant"
+  },
+  {
+    name: "Muffin (blueberry)",
+    aliases: ["blueberry muffin", "muffin"],
+    caloriesPer100g: 377,
+    proteinPer100g: 5.4,
+    carbsPer100g: 56,
+    fatPer100g: 16,
+    defaultPortionG: 113,
+    portionName: "1 muffin"
+  },
+  {
+    name: "Pancakes",
+    aliases: ["pancake", "american pancakes"],
+    caloriesPer100g: 227,
+    proteinPer100g: 6.4,
+    carbsPer100g: 28,
+    fatPer100g: 10,
+    defaultPortionG: 150,
+    portionName: "3 pancakes"
+  },
+  {
+    name: "Waffle",
+    aliases: ["waffles", "belgian waffle"],
+    caloriesPer100g: 291,
+    proteinPer100g: 7.9,
+    carbsPer100g: 37,
+    fatPer100g: 14,
+    defaultPortionG: 75,
+    portionName: "1 waffle"
+  },
+
+  // Frozen / Packaged
+  {
+    name: "Baked Beans",
+    aliases: ["heinz beans", "beans"],
+    caloriesPer100g: 84,
+    proteinPer100g: 4.8,
+    carbsPer100g: 15,
+    fatPer100g: 0.5,
+    defaultPortionG: 200,
+    portionName: "half tin"
+  },
+  {
+    name: "Tinned Tomatoes",
+    aliases: ["canned tomatoes", "chopped tomatoes"],
+    caloriesPer100g: 24,
+    proteinPer100g: 1.3,
+    carbsPer100g: 4.5,
+    fatPer100g: 0.2,
+    defaultPortionG: 400,
+    portionName: "1 tin"
+  },
+  {
+    name: "Ice Cream (vanilla)",
+    aliases: ["ice cream", "vanilla ice cream"],
+    caloriesPer100g: 207,
+    proteinPer100g: 3.5,
+    carbsPer100g: 24,
+    fatPer100g: 11,
+    defaultPortionG: 100,
+    portionName: "2 scoops"
+  },
+  {
+    name: "Frozen Chips",
+    aliases: ["oven chips", "frozen fries"],
+    caloriesPer100g: 165,
+    proteinPer100g: 2.7,
+    carbsPer100g: 26,
+    fatPer100g: 5.8,
+    defaultPortionG: 200,
+    portionName: "1 serving"
+  },
+
+  // More Vegetables
+  {
+    name: "Garlic",
+    aliases: ["garlic clove"],
+    caloriesPer100g: 149,
+    proteinPer100g: 6.4,
+    carbsPer100g: 33,
+    fatPer100g: 0.5,
+    defaultPortionG: 10,
+    portionName: "3 cloves"
+  },
+  {
+    name: "Ginger",
+    aliases: ["fresh ginger"],
+    caloriesPer100g: 80,
+    proteinPer100g: 1.8,
+    carbsPer100g: 18,
+    fatPer100g: 0.8,
+    defaultPortionG: 10,
+    portionName: "1 tsp grated"
+  },
+  {
+    name: "Green Beans",
+    aliases: ["french beans", "fine beans"],
+    caloriesPer100g: 31,
+    proteinPer100g: 1.8,
+    carbsPer100g: 7,
+    fatPer100g: 0.1,
+    defaultPortionG: 80,
+    portionName: "1 serving"
+  },
+  {
+    name: "Cauliflower",
+    aliases: [],
+    caloriesPer100g: 25,
+    proteinPer100g: 1.9,
+    carbsPer100g: 5,
+    fatPer100g: 0.3,
+    defaultPortionG: 100,
+    portionName: "1 cup"
+  },
+  {
+    name: "Asparagus",
+    aliases: [],
+    caloriesPer100g: 20,
+    proteinPer100g: 2.2,
+    carbsPer100g: 3.7,
+    fatPer100g: 0.1,
+    defaultPortionG: 90,
+    portionName: "6 spears"
+  },
+  {
+    name: "Beetroot",
+    aliases: ["beets"],
+    caloriesPer100g: 43,
+    proteinPer100g: 1.6,
+    carbsPer100g: 10,
+    fatPer100g: 0.2,
+    defaultPortionG: 100,
+    portionName: "1 serving"
+  },
+
+  // More Proteins
+  {
+    name: "Sausages (pork)",
+    aliases: ["sausage", "pork sausage", "banger"],
+    caloriesPer100g: 301,
+    proteinPer100g: 14,
+    carbsPer100g: 8,
+    fatPer100g: 25,
+    defaultPortionG: 100,
+    portionName: "2 sausages"
+  },
+  {
+    name: "Chicken Sausages",
+    aliases: ["chicken sausage"],
+    caloriesPer100g: 176,
+    proteinPer100g: 16,
+    carbsPer100g: 10,
+    fatPer100g: 8,
+    defaultPortionG: 100,
+    portionName: "2 sausages"
+  },
+  {
+    name: "Halloumi",
+    aliases: ["halloumi cheese", "grilled halloumi"],
+    caloriesPer100g: 321,
+    proteinPer100g: 26,
+    carbsPer100g: 2,
+    fatPer100g: 23,
+    defaultPortionG: 80,
+    portionName: "3 slices"
+  },
+  {
+    name: "Duck Breast",
+    aliases: ["duck"],
+    caloriesPer100g: 337,
+    proteinPer100g: 19,
+    carbsPer100g: 0,
+    fatPer100g: 29,
+    defaultPortionG: 150,
+    portionName: "1 breast"
   }
 ];
 
