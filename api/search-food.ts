@@ -53,8 +53,10 @@ const NUTRIENT_IDS = {
 
 async function searchUSDA(query: string, apiKey: string): Promise<FoodSearchResult[]> {
   try {
+    // Prioritize Foundation and SR Legacy (generic foods) over Branded (US store products)
+    // This gives cleaner results for basic foods like "chicken breast"
     const response = await fetch(
-      `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}&query=${encodeURIComponent(query)}&pageSize=15&dataType=Foundation,SR Legacy,Branded`,
+      `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}&query=${encodeURIComponent(query)}&pageSize=20&dataType=Foundation,SR Legacy`,
       { headers: { 'Content-Type': 'application/json' } }
     );
 
@@ -96,10 +98,13 @@ async function searchUSDA(query: string, apiKey: string): Promise<FoodSearchResu
   }
 }
 
-async function searchOpenFoodFacts(query: string): Promise<FoodSearchResult[]> {
+async function searchOpenFoodFacts(query: string, countryCode?: string): Promise<FoodSearchResult[]> {
   try {
+    // Use regional subdomain if specified (ie = Ireland, uk, etc.)
+    // Falls back to world for global search
+    const domain = countryCode ? `${countryCode}.openfoodfacts.org` : 'world.openfoodfacts.org';
     const response = await fetch(
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=15&fields=_id,product_name,brands,nutriments,serving_size`,
+      `https://${domain}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&fields=_id,product_name,brands,nutriments,serving_size`,
       { headers: { 'User-Agent': 'IronMind-GymTracker/1.0' } }
     );
 
@@ -174,26 +179,32 @@ export default async function handler(req: any, res: any) {
   const usdaApiKey = process.env.USDA_API_KEY;
 
   try {
-    // Search both APIs in parallel for best results
+    // Search APIs in parallel for best results
+    // USDA Foundation/SR Legacy = generic nutrition reference data (no brands)
+    // Open Food Facts IE/UK = regional branded products
     const searchPromises: Promise<FoodSearchResult[]>[] = [
-      searchOpenFoodFacts(searchQuery)
+      searchOpenFoodFacts(searchQuery, 'ie'),  // Ireland products
+      searchOpenFoodFacts(searchQuery, 'uk'),  // UK products (similar to IE)
     ];
 
-    // Add USDA search if API key is available
+    // Add USDA search if API key is available (generic foods only, no US brands)
     if (usdaApiKey) {
-      searchPromises.unshift(searchUSDA(searchQuery, usdaApiKey));
+      searchPromises.unshift(searchUSDA(searchQuery, usdaApiKey));  // USDA first - best for raw foods
     }
 
     const results = await Promise.all(searchPromises);
 
-    // Combine results - USDA first (more accurate for raw foods), then Open Food Facts
+    // Combine: USDA generic foods first (most accurate for raw foods like chicken),
+    // then Irish products, then UK products
     let combinedResults: FoodSearchResult[] = [];
+    for (const resultSet of results) {
+      combinedResults.push(...resultSet);
+    }
 
-    if (usdaApiKey) {
-      // USDA results first
-      combinedResults = [...results[0], ...results[1]];
-    } else {
-      combinedResults = results[0];
+    // If we got very few results, also search globally as fallback
+    if (combinedResults.length < 5) {
+      const globalResults = await searchOpenFoodFacts(searchQuery);
+      combinedResults.push(...globalResults);
     }
 
     // Remove duplicates by similar name (case insensitive)
