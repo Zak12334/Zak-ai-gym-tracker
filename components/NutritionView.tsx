@@ -1,7 +1,31 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FoodLog, WaterLog, NutritionGoals, SavedMeal } from '../types';
-import { FOOD_DATABASE, searchFood, calculateNutrition, parseNaturalInput, FoodItem } from '../foodDatabase';
 import { generateUUID } from '../utils';
+
+// API Food result type - from real food databases (USDA, Open Food Facts)
+interface ApiFoodResult {
+  id: string;
+  name: string;
+  brand?: string;
+  caloriesPer100g: number;
+  proteinPer100g: number;
+  carbsPer100g: number;
+  fatPer100g: number;
+  servingSize?: number;
+  servingUnit?: string;
+  source: 'usda' | 'openfoodfacts';
+}
+
+// Calculate nutrition for a given weight
+const calculateNutritionFromApi = (food: ApiFoodResult, grams: number) => {
+  const multiplier = grams / 100;
+  return {
+    calories: Math.round(food.caloriesPer100g * multiplier),
+    protein: Math.round(food.proteinPer100g * multiplier * 10) / 10,
+    carbs: Math.round(food.carbsPer100g * multiplier * 10) / 10,
+    fat: Math.round(food.fatPer100g * multiplier * 10) / 10
+  };
+};
 
 interface NutritionViewProps {
   foods: FoodLog[];
@@ -37,13 +61,16 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   onPhotoEstimate
 }) => {
   const [quickAddInput, setQuickAddInput] = useState('');
-  const [searchResults, setSearchResults] = useState<FoodItem[]>([]);
-  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
+  const [searchResults, setSearchResults] = useState<ApiFoodResult[]>([]);
+  const [selectedFood, setSelectedFood] = useState<ApiFoodResult | null>(null);
   const [grams, setGrams] = useState<number>(0);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Date navigation
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -174,50 +201,74 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
   const weeklyStats = getWeeklyStats();
 
-  // Handle input change with search
+  // Handle input change with API search (debounced)
   useEffect(() => {
-    if (quickAddInput.length > 1) {
-      const results = searchFood(quickAddInput);
-      setSearchResults(results.slice(0, 5));
-    } else {
-      setSearchResults([]);
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
     }
+
+    if (quickAddInput.length < 2) {
+      setSearchResults([]);
+      setSearchError(null);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError(null);
+
+    // Debounce API calls - wait 400ms after user stops typing
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/search-food?query=${encodeURIComponent(quickAddInput)}`);
+
+        if (!response.ok) {
+          throw new Error('Search failed');
+        }
+
+        const data = await response.json();
+        setSearchResults(data.foods || []);
+        setSearchError(null);
+      } catch (error) {
+        console.error('Food search error:', error);
+        setSearchResults([]);
+        setSearchError('Search failed. Try again or use manual entry.');
+      } finally {
+        setIsSearching(false);
+      }
+    }, 400);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
   }, [quickAddInput]);
 
   const handleQuickAdd = () => {
-    const parsed = parseNaturalInput(quickAddInput);
-    if (parsed && parsed.food) {
-      const nutrition = calculateNutrition(parsed.food, parsed.grams);
-      const newFood: FoodLog = {
-        id: generateUUID(),
-        date: today,
-        timestamp: Date.now(),
-        name: parsed.food.name,
-        calories: nutrition.calories,
-        protein: nutrition.protein,
-        carbs: nutrition.carbs,
-        fat: nutrition.fat,
-        amount: parsed.grams,
-        unit: 'g',
-        source: 'manual'
-      };
-      onAddFood(newFood);
-      setQuickAddInput('');
-      setShowQuickAdd(false);
-      setSearchResults([]);
+    // If there are search results, select the first one
+    if (searchResults.length > 0) {
+      handleSelectFood(searchResults[0]);
+      return;
     }
+    // Otherwise switch to manual entry mode
+    setQuickAddMode('manual');
+    setManualName(quickAddInput);
   };
 
-  const handleSelectFood = (food: FoodItem) => {
+  const handleSelectFood = (food: ApiFoodResult) => {
     setSelectedFood(food);
-    setGrams(food.defaultPortionG);
+    // Use serving size if available, otherwise default to 100g
+    const defaultGrams = food.servingSize || 100;
+    setGrams(defaultGrams);
     setSearchResults([]);
     setQuickAddInput('');
   };
 
   const handleConfirmFood = () => {
     if (selectedFood && grams > 0) {
-      const nutrition = calculateNutrition(selectedFood, grams);
+      const nutrition = calculateNutritionFromApi(selectedFood, grams);
       const newFood: FoodLog = {
         id: generateUUID(),
         date: today,
@@ -747,60 +798,106 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 </button>
               </>
             ) : quickAddMode === 'search' && !selectedFood ? (
-              /* Search Mode */
+              /* Search Mode - Real Food Database */
               <>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-3">Type food with amount (e.g., "250g chicken" or "2 eggs")</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">Search real food database (USDA + Open Food Facts)</p>
+                <p className="text-[9px] text-green-500/70 mb-3">Accurate nutrition data like MyFitnessPal</p>
                 <input
                   ref={inputRef}
                   type="text"
                   value={quickAddInput}
                   onChange={(e) => setQuickAddInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleQuickAdd()}
-                  placeholder="250g chicken breast..."
+                  placeholder="Search any food..."
                   className="w-full bg-slate-800 border border-white/10 rounded-2xl p-4 text-white font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500 mb-3"
                 />
 
+                {/* Loading State */}
+                {isSearching && (
+                  <div className="flex items-center justify-center py-6">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                    <span className="ml-2 text-slate-400 text-sm">Searching food database...</span>
+                  </div>
+                )}
+
+                {/* Error State */}
+                {searchError && !isSearching && (
+                  <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-3 mb-3">
+                    <p className="text-red-400 text-sm">{searchError}</p>
+                  </div>
+                )}
+
                 {/* Search Results */}
-                {searchResults.length > 0 && (
-                  <div className="space-y-2 mb-4">
+                {!isSearching && searchResults.length > 0 && (
+                  <div className="space-y-2 mb-4 max-h-[40vh] overflow-y-auto">
                     {searchResults.map(food => (
                       <button
-                        key={food.name}
+                        key={food.id}
                         onClick={() => handleSelectFood(food)}
                         className="w-full bg-slate-800/50 rounded-xl p-3 flex justify-between items-center active:bg-slate-700 transition-colors"
                       >
-                        <div>
-                          <p className="font-bold text-white text-left">{food.name}</p>
-                          <p className="text-[10px] text-slate-500">{food.portionName} = {food.defaultPortionG}g</p>
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="font-bold text-white text-sm truncate">{food.name}</p>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${
+                              food.source === 'usda' ? 'bg-green-900/50 text-green-400' : 'bg-orange-900/50 text-orange-400'
+                            }`}>
+                              {food.source === 'usda' ? 'USDA' : 'OFF'}
+                            </span>
+                            <span className="text-[10px] text-slate-500">per 100g</span>
+                          </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right ml-2">
                           <p className="text-sm font-bold text-orange-400">{food.caloriesPer100g} cal</p>
-                          <p className="text-[10px] text-blue-400">{food.proteinPer100g}g protein</p>
+                          <p className="text-[10px] text-blue-400">{food.proteinPer100g}g P • {food.carbsPer100g}g C • {food.fatPer100g}g F</p>
                         </div>
                       </button>
                     ))}
                   </div>
                 )}
 
+                {/* No Results */}
+                {!isSearching && !searchError && quickAddInput.length >= 2 && searchResults.length === 0 && (
+                  <div className="text-center py-6">
+                    <p className="text-slate-400 text-sm mb-2">No results found for "{quickAddInput}"</p>
+                    <button
+                      onClick={() => {
+                        setQuickAddMode('manual');
+                        setManualName(quickAddInput);
+                      }}
+                      className="text-blue-400 text-sm font-bold"
+                    >
+                      Enter nutrition manually instead
+                    </button>
+                  </div>
+                )}
+
                 <button
                   onClick={handleQuickAdd}
-                  disabled={!quickAddInput}
+                  disabled={!quickAddInput || isSearching}
                   className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-wider disabled:opacity-30 active:scale-95 transition-transform"
                 >
-                  Add Food
+                  {searchResults.length > 0 ? 'Select First Result' : 'Search'}
                 </button>
               </>
             ) : quickAddMode === 'search' && selectedFood ? (
               <>
                 <div className="bg-slate-800 rounded-2xl p-4 mb-4">
-                  <p className="font-black text-xl text-white mb-1">{selectedFood.name}</p>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-widest">Per 100g: {selectedFood.caloriesPer100g} cal / {selectedFood.proteinPer100g}g protein</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-black text-xl text-white mb-1 flex-1">{selectedFood.name}</p>
+                    <span className={`text-[8px] px-2 py-1 rounded font-bold shrink-0 ${
+                      selectedFood.source === 'usda' ? 'bg-green-900/50 text-green-400' : 'bg-orange-900/50 text-orange-400'
+                    }`}>
+                      {selectedFood.source === 'usda' ? 'USDA' : 'Open Food Facts'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest">Per 100g: {selectedFood.caloriesPer100g} cal / {selectedFood.proteinPer100g}g protein / {selectedFood.carbsPer100g}g carbs / {selectedFood.fatPer100g}g fat</p>
                 </div>
 
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2">Amount (grams)</p>
                 <div className="flex items-center gap-3 mb-4">
                   <button
-                    onClick={() => setGrams(g => Math.max(0, g - 50))}
+                    onClick={() => setGrams(g => Math.max(0, g - 25))}
                     className="bg-slate-800 w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-xl active:bg-slate-700"
                   >
                     -
@@ -812,7 +909,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     className="flex-1 bg-slate-800 border border-white/10 rounded-xl p-3 text-center text-2xl font-black text-white focus:outline-none"
                   />
                   <button
-                    onClick={() => setGrams(g => g + 50)}
+                    onClick={() => setGrams(g => g + 25)}
                     className="bg-slate-800 w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-xl active:bg-slate-700"
                   >
                     +
@@ -821,11 +918,19 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
                 {/* Quick portion buttons */}
                 <div className="flex gap-2 mb-4">
+                  {selectedFood.servingSize && (
+                    <button
+                      onClick={() => setGrams(selectedFood.servingSize!)}
+                      className="flex-1 bg-slate-800 py-2 rounded-xl text-xs font-bold text-slate-400 active:bg-slate-700"
+                    >
+                      {selectedFood.servingSize}{selectedFood.servingUnit || 'g'}
+                    </button>
+                  )}
                   <button
-                    onClick={() => setGrams(selectedFood.defaultPortionG)}
+                    onClick={() => setGrams(50)}
                     className="flex-1 bg-slate-800 py-2 rounded-xl text-xs font-bold text-slate-400 active:bg-slate-700"
                   >
-                    {selectedFood.portionName}
+                    50g
                   </button>
                   <button
                     onClick={() => setGrams(100)}
@@ -834,10 +939,16 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     100g
                   </button>
                   <button
-                    onClick={() => setGrams(selectedFood.defaultPortionG * 2)}
+                    onClick={() => setGrams(150)}
                     className="flex-1 bg-slate-800 py-2 rounded-xl text-xs font-bold text-slate-400 active:bg-slate-700"
                   >
-                    2x portion
+                    150g
+                  </button>
+                  <button
+                    onClick={() => setGrams(200)}
+                    className="flex-1 bg-slate-800 py-2 rounded-xl text-xs font-bold text-slate-400 active:bg-slate-700"
+                  >
+                    200g
                   </button>
                 </div>
 
@@ -845,19 +956,19 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 {grams > 0 && (
                   <div className="bg-slate-800/50 rounded-xl p-3 mb-4 grid grid-cols-4 gap-2 text-center">
                     <div>
-                      <p className="text-lg font-black text-orange-400">{calculateNutrition(selectedFood, grams).calories}</p>
+                      <p className="text-lg font-black text-orange-400">{calculateNutritionFromApi(selectedFood, grams).calories}</p>
                       <p className="text-[8px] text-slate-500 uppercase">cal</p>
                     </div>
                     <div>
-                      <p className="text-lg font-black text-blue-400">{calculateNutrition(selectedFood, grams).protein}g</p>
+                      <p className="text-lg font-black text-blue-400">{calculateNutritionFromApi(selectedFood, grams).protein}g</p>
                       <p className="text-[8px] text-slate-500 uppercase">protein</p>
                     </div>
                     <div>
-                      <p className="text-lg font-black text-green-400">{calculateNutrition(selectedFood, grams).carbs}g</p>
+                      <p className="text-lg font-black text-green-400">{calculateNutritionFromApi(selectedFood, grams).carbs}g</p>
                       <p className="text-[8px] text-slate-500 uppercase">carbs</p>
                     </div>
                     <div>
-                      <p className="text-lg font-black text-yellow-400">{calculateNutrition(selectedFood, grams).fat}g</p>
+                      <p className="text-lg font-black text-yellow-400">{calculateNutritionFromApi(selectedFood, grams).fat}g</p>
                       <p className="text-[8px] text-slate-500 uppercase">fat</p>
                     </div>
                   </div>

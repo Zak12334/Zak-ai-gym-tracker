@@ -13,9 +13,11 @@ A comprehensive gym and nutrition tracking app with AI-powered insights, multi-u
 - Default exercise suggestions for each workout type
 
 ### Nutrition Tracking
-- Manual food logging with calories, protein, carbs, and fat
-- Barcode scanning for quick food entry
+- **Real Food Database Search** - Search foods from USDA FoodData Central + Open Food Facts (same databases MyFitnessPal uses)
+- Accurate nutrition data for any food - no more estimates
+- Barcode scanning for quick food entry (Open Food Facts)
 - AI photo estimation - snap a pic of your meal
+- Manual entry for custom foods
 - Water intake tracking
 - Personalized calorie and protein goals calculated from your stats (Mifflin-St Jeor formula)
 
@@ -44,6 +46,11 @@ npm install
 ANTHROPIC_API_KEY=your-claude-api-key
 VITE_SUPABASE_URL=your-supabase-url
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+
+# Optional: USDA FoodData Central API key for enhanced food search
+# Get a free key at: https://fdc.nal.usda.gov/api-key-signup.html
+# Without this, the app still works using Open Food Facts database
+USDA_API_KEY=your-usda-api-key
 ```
 
 3. Run the development server:
