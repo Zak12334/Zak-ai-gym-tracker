@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FoodLog, WaterLog, NutritionGoals, SavedMeal } from '../types';
 import { generateUUID } from '../utils';
+import { FOOD_DATABASE, FoodItem } from '../foodDatabase';
 
 // API Food result type - from real food databases (USDA, Open Food Facts)
 interface ApiFoodResult {
@@ -13,8 +14,69 @@ interface ApiFoodResult {
   fatPer100g: number;
   servingSize?: number;
   servingUnit?: string;
-  source: 'usda' | 'openfoodfacts';
+  source: 'usda' | 'openfoodfacts' | 'local';
 }
+
+// Search local food database - returns simple, single options (no variants)
+const searchLocalDatabase = (query: string): ApiFoodResult[] => {
+  const q = query.toLowerCase().trim();
+  if (q.length < 2) return [];
+
+  const matches: { food: FoodItem; score: number }[] = [];
+
+  for (const food of FOOD_DATABASE) {
+    // Exact name match = highest score
+    if (food.name.toLowerCase() === q) {
+      matches.push({ food, score: 100 });
+      continue;
+    }
+
+    // Name starts with query = high score
+    if (food.name.toLowerCase().startsWith(q)) {
+      matches.push({ food, score: 80 });
+      continue;
+    }
+
+    // Name contains query = medium score
+    if (food.name.toLowerCase().includes(q)) {
+      matches.push({ food, score: 60 });
+      continue;
+    }
+
+    // Check aliases
+    for (const alias of food.aliases) {
+      if (alias.toLowerCase() === q) {
+        matches.push({ food, score: 90 });
+        break;
+      }
+      if (alias.toLowerCase().startsWith(q)) {
+        matches.push({ food, score: 70 });
+        break;
+      }
+      if (alias.toLowerCase().includes(q)) {
+        matches.push({ food, score: 50 });
+        break;
+      }
+    }
+  }
+
+  // Sort by score descending, take top 5
+  matches.sort((a, b) => b.score - a.score);
+  const topMatches = matches.slice(0, 5);
+
+  // Convert to ApiFoodResult format
+  return topMatches.map(({ food }) => ({
+    id: `local_${food.name.toLowerCase().replace(/\s+/g, '_')}`,
+    name: food.name,
+    caloriesPer100g: food.caloriesPer100g,
+    proteinPer100g: food.proteinPer100g,
+    carbsPer100g: food.carbsPer100g,
+    fatPer100g: food.fatPer100g,
+    servingSize: food.defaultPortionG,
+    servingUnit: 'g',
+    source: 'local' as const
+  }));
+};
 
 // Calculate nutrition for a given weight
 const calculateNutritionFromApi = (food: ApiFoodResult, grams: number) => {
@@ -201,7 +263,8 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
   const weeklyStats = getWeeklyStats();
 
-  // Handle input change with API search (debounced)
+  // Handle input change - check local database FIRST, only use API if no local matches
+  // This gives a simpler experience: type "chicken breast" -> get ONE simple option
   useEffect(() => {
     // Clear previous timeout
     if (searchTimeoutRef.current) {
@@ -215,10 +278,21 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       return;
     }
 
+    // First, check local database (instant, no API call needed)
+    const localMatches = searchLocalDatabase(quickAddInput);
+
+    // If we have local matches, use those - no need for API (simpler & faster)
+    if (localMatches.length > 0) {
+      setSearchResults(localMatches);
+      setSearchError(null);
+      setIsSearching(false);
+      return;
+    }
+
+    // No local matches - fall back to API search (debounced)
     setIsSearching(true);
     setSearchError(null);
 
-    // Debounce API calls - wait 400ms after user stops typing
     searchTimeoutRef.current = setTimeout(async () => {
       try {
         const response = await fetch(`/api/search-food?query=${encodeURIComponent(quickAddInput)}`);
@@ -840,9 +914,10 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                           <p className="font-bold text-white text-sm truncate">{food.name}</p>
                           <div className="flex items-center gap-2">
                             <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${
+                              food.source === 'local' ? 'bg-blue-900/50 text-blue-400' :
                               food.source === 'usda' ? 'bg-green-900/50 text-green-400' : 'bg-orange-900/50 text-orange-400'
                             }`}>
-                              {food.source === 'usda' ? 'USDA' : 'OFF'}
+                              {food.source === 'local' ? 'QUICK' : food.source === 'usda' ? 'USDA' : 'OFF'}
                             </span>
                             <span className="text-[10px] text-slate-500">per 100g</span>
                           </div>
