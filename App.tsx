@@ -51,6 +51,10 @@ const App: React.FC = () => {
   const [editSplitRestPattern, setEditSplitRestPattern] = useState(3);
   const [editSplitStartDay, setEditSplitStartDay] = useState(0);
 
+  // Workout override for Zak Split - allows changing today's workout if you missed a day
+  const [workoutOverride, setWorkoutOverride] = useState<DayType | null>(null);
+  const [showWorkoutDropdown, setShowWorkoutDropdown] = useState(false);
+
   // Admin detection - Zak's account gets admin privileges (cross-split history, etc.)
   const isAdmin = profile?.name?.toLowerCase() === 'zak';
 
@@ -564,7 +568,10 @@ const App: React.FC = () => {
   }, [activeSession]);
 
   const startSession = () => {
-    const type = profile?.split_type ? getWorkoutForUser(profile) : getWorkoutForToday();
+    // For Zak Split: use the override if set, otherwise use today's scheduled workout
+    const scheduledType = profile?.split_type ? getWorkoutForUser(profile) : getWorkoutForToday();
+    const isZakSplit = !profile?.split_type;
+    const type = isZakSplit && workoutOverride ? workoutOverride : scheduledType;
     const userDefined = preferredMachines[type];
 
     // Get muscle groups for this workout type to detect muscleGroup from prefix
@@ -628,6 +635,11 @@ const App: React.FC = () => {
     setTimer(0);
     setActiveSession(newSession);
     persistActiveSession(newSession);
+
+    // Clear the workout override after starting (so next time shows scheduled workout)
+    if (workoutOverride) {
+      setWorkoutOverride(null);
+    }
 
     // Initialize expanded sections based on workout type
     const muscleGroups = profile?.split_type ? getMuscleGroupsForWorkoutDay(type) : [];
@@ -909,8 +921,19 @@ const App: React.FC = () => {
   };
 
   const renderHome = () => {
-    const todayWorkout = profile?.split_type ? getWorkoutForUser(profile) : getWorkoutForToday();
+    const scheduledWorkout = profile?.split_type ? getWorkoutForUser(profile) : getWorkoutForToday();
+    // For Zak Split only: allow overriding the scheduled workout
+    const isZakSplit = !profile?.split_type;
+    const todayWorkout = isZakSplit && workoutOverride ? workoutOverride : scheduledWorkout;
     const firstName = profile?.name || 'Zak';
+
+    // All Zak Split workout options (excluding rest)
+    const zakSplitOptions = [
+      DayType.ChestTriceps,
+      DayType.BackAbs,
+      DayType.BicepsShoulders,
+      DayType.LegsRearDeltForearms
+    ];
     return (
       <div className="flex flex-col items-center justify-center min-h-[90vh] p-8 text-center animate-in fade-in duration-500 relative">
         {/* Profile/Logout Menu */}
@@ -944,7 +967,63 @@ const App: React.FC = () => {
           <h1 className="text-4xl font-black tracking-tighter text-white uppercase italic">IronMind</h1>
           <div className="flex flex-col gap-1 mt-2">
             <p className="text-slate-600 font-bold text-[10px] uppercase tracking-[0.3em]">Authorized for {firstName}</p>
-            <p className="text-blue-500 font-black text-xs uppercase tracking-widest">{todayWorkout}</p>
+            {isZakSplit ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowWorkoutDropdown(!showWorkoutDropdown)}
+                  className="text-blue-500 font-black text-xs uppercase tracking-widest flex items-center gap-1 hover:text-blue-400 transition-colors"
+                >
+                  {todayWorkout}
+                  <svg className={`w-3 h-3 transition-transform ${showWorkoutDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                  {workoutOverride && (
+                    <span className="ml-1 text-[8px] text-yellow-500 font-bold">(changed)</span>
+                  )}
+                </button>
+                {showWorkoutDropdown && (
+                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 bg-slate-900 border border-white/10 rounded-2xl p-2 shadow-xl z-50 min-w-[200px]">
+                    <p className="text-[8px] text-slate-500 px-3 py-1 font-bold uppercase tracking-widest">Change workout</p>
+                    {zakSplitOptions.map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => {
+                          if (option === scheduledWorkout) {
+                            setWorkoutOverride(null);
+                          } else {
+                            setWorkoutOverride(option);
+                          }
+                          setShowWorkoutDropdown(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm rounded-xl transition-colors ${
+                          (workoutOverride === option || (!workoutOverride && option === scheduledWorkout))
+                            ? 'bg-blue-600/20 text-blue-400 font-bold'
+                            : 'text-white hover:bg-white/10'
+                        }`}
+                      >
+                        {option}
+                        {option === scheduledWorkout && (
+                          <span className="ml-2 text-[8px] text-slate-500">(scheduled)</span>
+                        )}
+                      </button>
+                    ))}
+                    {workoutOverride && (
+                      <button
+                        onClick={() => {
+                          setWorkoutOverride(null);
+                          setShowWorkoutDropdown(false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm rounded-xl text-yellow-400 hover:bg-yellow-900/20 transition-colors mt-1 border-t border-white/10"
+                      >
+                        Reset to scheduled
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-blue-500 font-black text-xs uppercase tracking-widest">{todayWorkout}</p>
+            )}
           </div>
         </header>
         <div className="relative">
