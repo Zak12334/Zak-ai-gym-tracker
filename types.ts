@@ -31,7 +31,7 @@ export interface UserProfile {
 }
 
 // Workout split types
-export type SplitType = 'ppl' | 'bro' | 'upper_lower' | 'full_body' | 'custom';
+export type SplitType = 'ppl' | 'pplul' | 'bro' | 'upper_lower' | 'full_body' | 'custom';
 
 export interface WorkoutSplit {
   type: SplitType;
@@ -46,6 +46,11 @@ export const PRESET_SPLITS: Record<Exclude<SplitType, 'custom'>, { name: string;
     name: 'Push/Pull/Legs',
     days: ['Push', 'Pull', 'Legs'],
     restPattern: 6 // PPL PPL Rest
+  },
+  pplul: {
+    name: 'PPL + Upper/Lower',
+    days: ['Push', 'Pull', 'Legs', 'Rest', 'Upper', 'Lower'],
+    restPattern: 7 // Push Pull Legs Rest Upper Lower Rest
   },
   bro: {
     name: 'Bro Split',
@@ -65,11 +70,18 @@ export const PRESET_SPLITS: Record<Exclude<SplitType, 'custom'>, { name: string;
 };
 
 export enum DayType {
+  // PPLUL Split (Zak's current split)
+  Push = "Push",
+  Pull = "Pull",
+  Legs = "Legs",
+  Upper = "Upper",
+  Lower = "Lower",
+  Rest = "Rest Day",
+  // Legacy types (kept for backwards compatibility with old sessions)
   ChestTriceps = "Chest & Triceps",
   BackAbs = "Back & Abs",
   BicepsShoulders = "Biceps & Shoulders",
-  LegsRearDeltForearms = "Legs, Rear Delt & Forearms",
-  Rest = "Rest Day"
+  LegsRearDeltForearms = "Legs, Rear Delt & Forearms"
 }
 
 export interface ProgressionReport {

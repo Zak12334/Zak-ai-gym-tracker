@@ -40,7 +40,10 @@ export const SmartTargets: React.FC<SmartTargetsProps> = ({ target, exerciseName
           {target.hasData && (
             <span className={`text-sm font-black ${trend.color}`}>{trend.icon}</span>
           )}
-          {target.plateauDetected && (
+          {target.weightIncreasePhase && (
+            <span className="text-[8px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">New Weight</span>
+          )}
+          {target.plateauDetected && !target.weightIncreasePhase && (
             <span className="text-[8px] font-black uppercase tracking-wider bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded-full">Plateau</span>
           )}
           {target.missedLastWeek && (
@@ -95,7 +98,12 @@ export const SmartTargets: React.FC<SmartTargetsProps> = ({ target, exerciseName
             )}
 
             {/* Badges */}
-            {target.plateauDetected && (
+            {target.weightIncreasePhase && (
+              <span className="text-[8px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+                Building at New Weight
+              </span>
+            )}
+            {target.plateauDetected && !target.weightIncreasePhase && (
               <span className="text-[8px] font-black uppercase tracking-wider bg-yellow-500/20 text-yellow-500 px-2 py-1 rounded-full">
                 Plateau Detected
               </span>
@@ -118,6 +126,28 @@ export const SmartTargets: React.FC<SmartTargetsProps> = ({ target, exerciseName
               <span className="text-lg font-black text-white">{target.targetReps}</span>
               <span className="text-[10px] font-bold uppercase text-slate-600">reps</span>
             </div>
+          </div>
+        )}
+
+        {/* Rep-building progress bar (shown when building at new weight) */}
+        {target.weightIncreasePhase && target.lastSession && target.repGoal && (
+          <div className="bg-white/5 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Rep Progress at {target.lastSession.bestSet.weight}kg</span>
+              <span className="text-xs font-bold text-blue-400">{target.lastSession.bestSet.reps}/{target.repGoal}</span>
+            </div>
+            <div className="w-full bg-slate-800 rounded-full h-2">
+              <div
+                className="bg-gradient-to-r from-blue-600 to-blue-400 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min(100, (target.lastSession.bestSet.reps / target.repGoal) * 100)}%` }}
+              />
+            </div>
+            <p className="text-[9px] text-slate-600 mt-1.5">
+              {target.repGoal - target.lastSession.bestSet.reps > 0
+                ? `${target.repGoal - target.lastSession.bestSet.reps} more reps until next weight increase`
+                : 'Ready for next weight increase!'
+              }
+            </p>
           </div>
         )}
 

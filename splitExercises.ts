@@ -80,15 +80,27 @@ const ABS_EXERCISES: MuscleGroupExercises = {
 
 // Workout day configurations for different splits
 export const SPLIT_DAY_EXERCISES: Record<string, WorkoutDayExercises> = {
-  // PPL Split
+  // PPL Split - Reasonable volume: 2-3 exercises per muscle group max
   'Push': {
-    muscleGroups: [CHEST_EXERCISES, SHOULDERS_EXERCISES, TRICEPS_EXERCISES]
+    muscleGroups: [
+      { ...CHEST_EXERCISES, exercises: ['Chest: Bench Press', 'Chest: Incline Press'] },
+      { ...SHOULDERS_EXERCISES, exercises: ['Shoulders: Shoulder Press', 'Shoulders: Lateral Raise'] },
+      { ...TRICEPS_EXERCISES, exercises: ['Triceps: Pushdown'] }
+    ]
   },
   'Pull': {
-    muscleGroups: [BACK_EXERCISES, BICEPS_EXERCISES, REAR_DELTS_EXERCISES]
+    muscleGroups: [
+      { ...BACK_EXERCISES, exercises: ['Back: Lat Pulldown', 'Back: Seated Row'] },
+      { ...BICEPS_EXERCISES, exercises: ['Biceps: Bicep Curl', 'Biceps: Hammer Curl'] },
+      { ...REAR_DELTS_EXERCISES, exercises: ['Rear Delts: Face Pulls'] }
+    ]
   },
   'Legs': {
-    muscleGroups: [LEGS_QUADS_EXERCISES, LEGS_HAMSTRINGS_EXERCISES, LEGS_GLUTES_EXERCISES, LEGS_CALVES_EXERCISES]
+    muscleGroups: [
+      { ...LEGS_QUADS_EXERCISES, exercises: ['Quads: Leg Press', 'Quads: Leg Extension'] },
+      { ...LEGS_HAMSTRINGS_EXERCISES, exercises: ['Hamstrings: Leg Curl'] },
+      { ...LEGS_CALVES_EXERCISES, exercises: ['Calves: Calf Raise'] }
+    ]
   },
 
   // Bro Split
@@ -105,18 +117,22 @@ export const SPLIT_DAY_EXERCISES: Record<string, WorkoutDayExercises> = {
     muscleGroups: [BICEPS_EXERCISES, TRICEPS_EXERCISES]
   },
 
-  // Upper/Lower Split
+  // Upper/Lower Split - 1 exercise per muscle group for manageable volume
   'Upper': {
     muscleGroups: [
-      { ...CHEST_EXERCISES, exercises: ['Chest: Bench Press', 'Chest: Incline Press'] },
-      { ...BACK_EXERCISES, exercises: ['Back: Lat Pulldown', 'Back: Seated Row'] },
-      { ...SHOULDERS_EXERCISES, exercises: ['Shoulders: Shoulder Press', 'Shoulders: Lateral Raise'] },
-      { ...BICEPS_EXERCISES, exercises: ['Biceps: Bicep Curl'] },
-      { ...TRICEPS_EXERCISES, exercises: ['Triceps: Pushdown'] }
+      { ...CHEST_EXERCISES, exercises: ['Chest: Incline Press'] },
+      { ...BACK_EXERCISES, exercises: ['Back: Cable Row'] },
+      { ...SHOULDERS_EXERCISES, exercises: ['Shoulders: Shoulder Press'] },
+      { ...BICEPS_EXERCISES, exercises: ['Biceps: Preacher Curl'] },
+      { ...TRICEPS_EXERCISES, exercises: ['Triceps: Overhead Extension'] }
     ]
   },
   'Lower': {
-    muscleGroups: [LEGS_QUADS_EXERCISES, LEGS_HAMSTRINGS_EXERCISES, LEGS_GLUTES_EXERCISES, LEGS_CALVES_EXERCISES]
+    muscleGroups: [
+      { ...LEGS_QUADS_EXERCISES, exercises: ['Quads: Squats', 'Quads: Lunges'] },
+      { ...LEGS_HAMSTRINGS_EXERCISES, exercises: ['Hamstrings: Romanian Deadlift'] },
+      { ...LEGS_CALVES_EXERCISES, exercises: ['Calves: Seated Calf Raise'] }
+    ]
   },
 
   // Full Body Split
