@@ -14,42 +14,36 @@ export const WEEKLY_SCHEDULE: Record<number, DayType> = {
 };
 
 export const DEFAULT_EXERCISES: Record<DayType, string[]> = {
-  // PUSH DAY - Chest (2), Shoulders (2), Triceps (1) = 5 exercises
+  // PUSH DAY - 3 exercises total
   [DayType.Push]: [
-    "Chest: Bench Press",
-    "Chest: Incline Press",
+    "Chest: Chest Press",
     "Shoulders: Shoulder Press",
-    "Shoulders: Lateral Raises",
     "Triceps: Cable Pushdowns"
   ],
-  // PULL DAY - Back (2), Biceps (2), Rear Delts (1) = 5 exercises
+  // PULL DAY - 3 exercises total
   [DayType.Pull]: [
     "Back: Lat Pulldowns",
-    "Back: Seated Row",
     "Biceps: EZ Bar Curls",
-    "Biceps: Hammer Curls",
-    "Rear Delts: Face Pulls"
+    "Rear Delt: Rear Delt Fly"
   ],
-  // LEGS DAY - Quads (2), Hamstrings (1), Calves (1) = 4 exercises
+  // LEGS DAY - 3 exercises total
   [DayType.Legs]: [
-    "Quads: Leg Press",
-    "Quads: Leg Extensions",
-    "Hamstrings: Lying Leg Curls",
+    "Legs: Leg Press",
+    "Legs: Lying Leg Curls",
     "Calves: Calf Raises"
   ],
-  // UPPER DAY - Chest (1), Back (1), Shoulders (1), Biceps (1), Triceps (1) = 5 exercises
+  // UPPER DAY - 5 exercises (1 per muscle)
   [DayType.Upper]: [
-    "Chest: Incline Dumbbell Press",
-    "Back: Cable Row",
-    "Shoulders: Arnold Press",
-    "Biceps: Preacher Curls",
-    "Triceps: Overhead Extension"
+    "Chest: Incline Press",
+    "Back: High Row",
+    "Shoulders: Lateral Raises",
+    "Biceps: Hammer Curls",
+    "Triceps: Rope Extensions"
   ],
-  // LOWER DAY - Quads (2), Hamstrings (1), Calves (1) = 4 exercises
+  // LOWER DAY - 3 exercises total
   [DayType.Lower]: [
-    "Quads: Squats",
-    "Quads: Lunges",
-    "Hamstrings: Romanian Deadlift",
+    "Legs: Leg Extensions",
+    "Legs: Leg Curls",
     "Calves: Seated Calf Raise"
   ],
   [DayType.Rest]: [],
