@@ -29,6 +29,7 @@ const App: React.FC = () => {
   const [aiReport, setAiReport] = useState<string | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [showLegacySessions, setShowLegacySessions] = useState(false); // Collapsed by default
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showLogoutMenu, setShowLogoutMenu] = useState(false);
@@ -1100,6 +1101,33 @@ const App: React.FC = () => {
     // Define muscle group sections for each workout type
     // For Zak's profile (no split_type), use hardcoded sections
     const zakWorkoutSections: Record<string, { name: string; prefix: string; color: string }[]> = {
+      // NEW PPLUL Split sections
+      [DayType.Push]: [
+        { name: 'Chest', prefix: 'chest:', color: '#ef4444' },
+        { name: 'Shoulders', prefix: 'shoulders:', color: '#84cc16' },
+        { name: 'Triceps', prefix: 'triceps:', color: '#f97316' }
+      ],
+      [DayType.Pull]: [
+        { name: 'Back', prefix: 'back:', color: '#3b82f6' },
+        { name: 'Biceps', prefix: 'biceps:', color: '#22c55e' },
+        { name: 'Rear Delt', prefix: 'rear delt:', color: '#d946ef' }
+      ],
+      [DayType.Legs]: [
+        { name: 'Legs', prefix: 'legs:', color: '#a855f7' },
+        { name: 'Calves', prefix: 'calves:', color: '#06b6d4' }
+      ],
+      [DayType.Upper]: [
+        { name: 'Chest', prefix: 'chest:', color: '#ef4444' },
+        { name: 'Back', prefix: 'back:', color: '#3b82f6' },
+        { name: 'Shoulders', prefix: 'shoulders:', color: '#84cc16' },
+        { name: 'Biceps', prefix: 'biceps:', color: '#22c55e' },
+        { name: 'Triceps', prefix: 'triceps:', color: '#f97316' }
+      ],
+      [DayType.Lower]: [
+        { name: 'Legs', prefix: 'legs:', color: '#a855f7' },
+        { name: 'Calves', prefix: 'calves:', color: '#06b6d4' }
+      ],
+      // Legacy sections (for viewing old workout history)
       [DayType.ChestTriceps]: [
         { name: 'Chest', prefix: 'chest:', color: '#ef4444' },
         { name: 'Triceps', prefix: 'triceps:', color: '#f97316' }
@@ -1257,7 +1285,47 @@ const App: React.FC = () => {
       </div>
       {history.length === 0 ? (
         <div className="mt-20 text-center opacity-20"><p className="font-black italic text-2xl mb-2 uppercase">No Data</p></div>
-      ) : history.map(s => <SessionCard key={s.id} session={s} onDelete={() => deleteSession(s.id)} onEdit={() => openEditSession(s)} />)}
+      ) : (() => {
+        // Separate current PPLUL sessions from legacy sessions
+        const currentSplitTypes = ['Push', 'Pull', 'Legs', 'Upper', 'Lower', 'Rest Day'];
+        const currentSessions = history.filter(s => currentSplitTypes.includes(s.type));
+        const legacySessions = history.filter(s => !currentSplitTypes.includes(s.type));
+
+        return (
+          <>
+            {/* Current PPLUL sessions */}
+            {currentSessions.length > 0 && (
+              <div className="space-y-4 mb-6">
+                {currentSessions.map(s => <SessionCard key={s.id} session={s} onDelete={() => deleteSession(s.id)} onEdit={() => openEditSession(s)} />)}
+              </div>
+            )}
+
+            {/* Legacy sessions in collapsible dropdown */}
+            {legacySessions.length > 0 && (
+              <div className="border border-white/10 rounded-2xl overflow-hidden bg-slate-900/30">
+                <button
+                  onClick={() => setShowLegacySessions(!showLegacySessions)}
+                  className="w-full p-4 flex justify-between items-center hover:bg-white/5 active:bg-white/10 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-slate-600"></div>
+                    <span className="text-sm font-black uppercase tracking-wider text-slate-500">Old Split Sessions</span>
+                    <span className="text-xs font-bold text-slate-700">({legacySessions.length})</span>
+                  </div>
+                  <svg className={`w-5 h-5 text-slate-600 transition-transform duration-300 ${showLegacySessions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showLegacySessions && (
+                  <div className="p-4 pt-0 space-y-4 border-t border-white/5">
+                    {legacySessions.map(s => <SessionCard key={s.id} session={s} onDelete={() => deleteSession(s.id)} onEdit={() => openEditSession(s)} />)}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 
@@ -1289,17 +1357,35 @@ const App: React.FC = () => {
               {/* Group sessions by type and show mini charts */}
               {(() => {
                 const typeColors: Record<string, string> = {
+                  // New PPLUL split
+                  'Push': '#ef4444',
+                  'Pull': '#3b82f6',
+                  'Legs': '#a855f7',
+                  'Upper': '#22c55e',
+                  'Lower': '#ec4899',
+                  // Legacy split
                   'Chest & Triceps': '#ef4444',
                   'Back & Abs': '#3b82f6',
                   'Biceps & Shoulders': '#22c55e',
                   'Legs, Rear Delt & Forearms': '#a855f7'
                 };
+
+                // Separate current and legacy sessions
+                const currentSplitTypes = ['Push', 'Pull', 'Legs', 'Upper', 'Lower'];
                 const sessionsByType: Record<string, typeof history> = {};
+                const legacySessionsByType: Record<string, typeof history> = {};
+
                 history.forEach(s => {
-                  if (!sessionsByType[s.type]) sessionsByType[s.type] = [];
-                  sessionsByType[s.type].push(s);
+                  if (currentSplitTypes.includes(s.type)) {
+                    if (!sessionsByType[s.type]) sessionsByType[s.type] = [];
+                    sessionsByType[s.type].push(s);
+                  } else if (s.type !== 'Rest Day') {
+                    if (!legacySessionsByType[s.type]) legacySessionsByType[s.type] = [];
+                    legacySessionsByType[s.type].push(s);
+                  }
                 });
-                return Object.entries(sessionsByType).map(([type, typeSessions]) => {
+
+                const renderVolumeChart = (type: string, typeSessions: typeof history) => {
                   const color = typeColors[type] || '#3b82f6';
                   const chartData = typeSessions.slice().reverse().map(s => ({
                     date: new Date(s.date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' }),
@@ -1342,7 +1428,39 @@ const App: React.FC = () => {
                       )}
                     </div>
                   );
-                });
+                };
+
+                const hasLegacy = Object.keys(legacySessionsByType).length > 0;
+
+                return (
+                  <>
+                    {/* Current PPLUL sessions */}
+                    {Object.entries(sessionsByType).map(([type, typeSessions]) => renderVolumeChart(type, typeSessions))}
+
+                    {/* Legacy sessions in collapsible */}
+                    {hasLegacy && (
+                      <div className="border border-white/10 rounded-2xl overflow-hidden bg-slate-900/30 mt-4">
+                        <button
+                          onClick={() => setShowLegacySessions(!showLegacySessions)}
+                          className="w-full p-4 flex justify-between items-center hover:bg-white/5 active:bg-white/10 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-2 h-2 rounded-full bg-slate-600"></div>
+                            <span className="text-sm font-black uppercase tracking-wider text-slate-500">Old Split Stats</span>
+                          </div>
+                          <svg className={`w-5 h-5 text-slate-600 transition-transform duration-300 ${showLegacySessions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {showLegacySessions && (
+                          <div className="p-4 pt-0 space-y-4 border-t border-white/5">
+                            {Object.entries(legacySessionsByType).map(([type, typeSessions]) => renderVolumeChart(type, typeSessions))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                );
               })()}
             </div>
           )}
