@@ -53,7 +53,28 @@ const App: React.FC = () => {
   const [editSplitStartDay, setEditSplitStartDay] = useState(0);
 
   // Workout override for Zak Split - allows changing today's workout if you missed a day
-  const [workoutOverride, setWorkoutOverride] = useState<DayType | null>(null);
+  // Persists to localStorage so it survives app restarts
+  const [workoutOverride, setWorkoutOverrideState] = useState<DayType | null>(() => {
+    const saved = localStorage.getItem('workoutOverride');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Check if override is still for today
+      if (parsed.date === new Date().toDateString()) {
+        return parsed.value as DayType;
+      }
+      // Clear stale override from previous day
+      localStorage.removeItem('workoutOverride');
+    }
+    return null;
+  });
+  const setWorkoutOverride = (value: DayType | null) => {
+    setWorkoutOverrideState(value);
+    if (value) {
+      localStorage.setItem('workoutOverride', JSON.stringify({ value, date: new Date().toDateString() }));
+    } else {
+      localStorage.removeItem('workoutOverride');
+    }
+  };
   const [showWorkoutDropdown, setShowWorkoutDropdown] = useState(false);
 
   // Admin detection - Zak's account gets admin privileges (cross-split history, etc.)
@@ -928,12 +949,13 @@ const App: React.FC = () => {
     const todayWorkout = isZakSplit && workoutOverride ? workoutOverride : scheduledWorkout;
     const firstName = profile?.name || 'Zak';
 
-    // All Zak Split workout options (excluding rest)
+    // All PPLUL workout options (excluding rest)
     const zakSplitOptions = [
-      DayType.ChestTriceps,
-      DayType.BackAbs,
-      DayType.BicepsShoulders,
-      DayType.LegsRearDeltForearms
+      DayType.Push,
+      DayType.Pull,
+      DayType.Legs,
+      DayType.Upper,
+      DayType.Lower
     ];
     return (
       <div className="flex flex-col items-center justify-center min-h-[90vh] p-8 text-center animate-in fade-in duration-500 relative">

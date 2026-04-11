@@ -1,7 +1,7 @@
 
 import { DayType } from './types';
 
-// PPLUL Split - Push/Pull/Legs/Rest/Upper/Lower/Rest
+// PPLUL Split - Push/Pull/Legs/Rest/Upper/Rest/Lower
 // Hits each muscle group 2x per week with reasonable volume
 export const WEEKLY_SCHEDULE: Record<number, DayType> = {
   1: DayType.Push,   // Monday
@@ -9,8 +9,8 @@ export const WEEKLY_SCHEDULE: Record<number, DayType> = {
   3: DayType.Legs,   // Wednesday
   4: DayType.Rest,   // Thursday (mid-week rest)
   5: DayType.Upper,  // Friday
-  6: DayType.Lower,  // Saturday
-  0: DayType.Rest    // Sunday
+  6: DayType.Rest,   // Saturday (always rest)
+  0: DayType.Lower   // Sunday
 };
 
 export const DEFAULT_EXERCISES: Record<DayType, string[]> = {
