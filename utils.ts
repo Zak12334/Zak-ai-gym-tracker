@@ -70,6 +70,35 @@ export const calculateSessionVolume = (session: WorkoutSession): number => {
   }, 0);
 };
 
+/**
+ * Calculate a strength-based score for a session using average best 1RM per exercise
+ * This properly values heavier weights even with fewer sets/reps
+ *
+ * Example: 2 sets of heavy weights will score HIGHER than 4 sets of lighter weights
+ * if the heavier weights produce a higher estimated 1RM
+ */
+export const calculateSessionStrengthScore = (session: WorkoutSession): number => {
+  if (session.exercises.length === 0) return 0;
+
+  const best1RMs = session.exercises.map(ex => {
+    if (ex.sets.length === 0) return 0;
+    // Find the best set by estimated 1RM (not volume)
+    return Math.max(...ex.sets.map(set => {
+      const weight = set.weight || 0;
+      const reps = set.reps || 0;
+      if (weight === 0 || reps === 0) return 0;
+      // Epley formula: 1RM = weight × (1 + reps/30)
+      return weight * (1 + reps / 30);
+    }));
+  }).filter(rm => rm > 0);
+
+  if (best1RMs.length === 0) return 0;
+
+  // Return SUM of best 1RMs (not average) - this way more exercises still add value
+  // but doing fewer sets with heavier weight won't penalize you
+  return best1RMs.reduce((sum, rm) => sum + rm, 0);
+};
+
 export const getLastPerformanceForExercise = (history: WorkoutSession[], exerciseName: string): Exercise | null => {
   for (const session of history) {
     const found = session.exercises.find(ex => ex.name.trim().toLowerCase() === exerciseName.trim().toLowerCase());

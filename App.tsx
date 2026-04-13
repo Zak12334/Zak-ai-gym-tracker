@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { WorkoutSession, DayType, Exercise, Set, UserProfile, FoodLog, WaterLog, NutritionGoals, SplitType, PRESET_SPLITS, SavedMeal } from './types';
-import { getWorkoutForToday, getWorkoutForUser, generateUUID, formatDuration, calculateSmartTarget, getDaysSinceLastWorkoutType } from './utils';
+import { getWorkoutForToday, getWorkoutForUser, generateUUID, formatDuration, calculateSmartTarget, getDaysSinceLastWorkoutType, calculateSessionStrengthScore } from './utils';
 import { SmartTargets } from './components/SmartTargets';
 import { NutritionView } from './components/NutritionView';
 import { BarcodeScanner } from './components/BarcodeScanner';
@@ -1411,12 +1411,18 @@ const App: React.FC = () => {
                   const color = typeColors[type] || '#3b82f6';
                   const chartData = typeSessions.slice().reverse().map(s => ({
                     date: new Date(s.date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' }),
+                    strength: calculateSessionStrengthScore(s),
                     volume: s.exercises.reduce((sum, e) => sum + e.sets.reduce((ss, st) => ss + (st.weight * st.reps), 0), 0)
                   }));
+                  // Use STRENGTH score for trend (rewards heavier weights even with fewer sets)
+                  const latestStrength = chartData.length > 0 ? chartData[chartData.length - 1].strength : 0;
+                  const prevStrength = chartData.length > 1 ? chartData[chartData.length - 2].strength : latestStrength;
+                  // Allow 2% tolerance to avoid noise
+                  const changePercent = prevStrength > 0 ? (latestStrength - prevStrength) / prevStrength : 0;
+                  const trend = changePercent > 0.02 ? '↑' : changePercent < -0.02 ? '↓' : '→';
+                  const trendColor = changePercent > 0.02 ? 'text-green-500' : changePercent < -0.02 ? 'text-red-500' : 'text-yellow-500';
+                  // Keep volume for display
                   const latestVol = chartData.length > 0 ? chartData[chartData.length - 1].volume : 0;
-                  const prevVol = chartData.length > 1 ? chartData[chartData.length - 2].volume : latestVol;
-                  const trend = latestVol > prevVol ? '↑' : latestVol < prevVol ? '↓' : '→';
-                  const trendColor = latestVol > prevVol ? 'text-green-500' : latestVol < prevVol ? 'text-red-500' : 'text-yellow-500';
                   return (
                     <div key={type} className="bg-slate-950 rounded-2xl p-4 border border-white/5">
                       <div className="flex justify-between items-center mb-2">
@@ -1426,7 +1432,8 @@ const App: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`text-lg font-black ${trendColor}`}>{trend}</span>
-                          <span className="text-sm font-bold text-slate-400">{latestVol.toLocaleString()} kg</span>
+                          <span className="text-xs font-bold text-slate-500">{Math.round(latestStrength)} 1RM</span>
+                          <span className="text-[10px] text-slate-600">({latestVol.toLocaleString()} kg vol)</span>
                         </div>
                       </div>
                       {chartData.length > 1 ? (
@@ -1439,7 +1446,7 @@ const App: React.FC = () => {
                                   <stop offset="95%" stopColor={color} stopOpacity={0}/>
                                 </linearGradient>
                               </defs>
-                              <Area type="monotone" dataKey="volume" stroke={color} strokeWidth={2} fillOpacity={1} fill={`url(#color${type.replace(/\s/g, '')})`} />
+                              <Area type="monotone" dataKey="strength" stroke={color} strokeWidth={2} fillOpacity={1} fill={`url(#color${type.replace(/\s/g, '')})`} />
                               <XAxis dataKey="date" hide />
                               <YAxis hide domain={['dataMin - 100', 'dataMax + 100']} />
                             </AreaChart>
