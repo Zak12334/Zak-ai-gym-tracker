@@ -748,11 +748,22 @@ const App: React.FC = () => {
         exercises: prev.exercises.map(ex => {
           if (ex.id === exerciseId) {
             const lastSet = ex.sets[ex.sets.length - 1];
+            // If no sets yet, try to get suggested weight from SmartTargets
+            let defaultWeight = 0;
+            if (lastSet) {
+              defaultWeight = lastSet.weight;
+            } else if (ex.name.trim()) {
+              // No sets yet - use SmartTarget suggestion
+              const smartTarget = calculateSmartTarget(ex.name, history, prev.type, isAdmin);
+              if (smartTarget.targetWeight) {
+                defaultWeight = smartTarget.targetWeight;
+              }
+            }
             return {
               ...ex,
               sets: [...ex.sets, {
                 id: generateUUID(),
-                weight: lastSet ? lastSet.weight : 0,
+                weight: defaultWeight,
                 reps: lastSet ? lastSet.reps : 0,
                 timestamp: Date.now()
               }]
