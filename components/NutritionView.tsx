@@ -93,6 +93,7 @@ interface NutritionViewProps {
   foods: FoodLog[];
   waterLogs: WaterLog[];
   goals: NutritionGoals;
+  waterTrackingEnabled: boolean;
   savedMeals: SavedMeal[];
   onAddFood: (food: FoodLog) => void;
   onAddWater: (water: WaterLog) => void;
@@ -110,6 +111,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   foods,
   waterLogs,
   goals,
+  waterTrackingEnabled,
   savedMeals,
   onAddFood,
   onAddWater,
@@ -510,7 +512,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         </div>
 
         {/* Weekly Averages */}
-        <div className="grid grid-cols-3 gap-2 text-center">
+        <div className={`grid ${waterTrackingEnabled ? 'grid-cols-3' : 'grid-cols-2'} gap-2 text-center`}>
           <div className="bg-slate-800/50 rounded-xl p-2">
             <p className="text-lg font-black text-orange-400">{weeklyStats.avgCalories}</p>
             <p className="text-[8px] text-slate-500 uppercase">Avg Cal</p>
@@ -519,10 +521,12 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
             <p className="text-lg font-black text-blue-400">{weeklyStats.avgProtein}g</p>
             <p className="text-[8px] text-slate-500 uppercase">Avg Protein</p>
           </div>
-          <div className="bg-slate-800/50 rounded-xl p-2">
-            <p className="text-lg font-black text-cyan-400">{(weeklyStats.avgWater / 1000).toFixed(1)}L</p>
-            <p className="text-[8px] text-slate-500 uppercase">Avg Water</p>
-          </div>
+          {waterTrackingEnabled && (
+            <div className="bg-slate-800/50 rounded-xl p-2">
+              <p className="text-lg font-black text-cyan-400">{(weeklyStats.avgWater / 1000).toFixed(1)}L</p>
+              <p className="text-[8px] text-slate-500 uppercase">Avg Water</p>
+            </div>
+          )}
         </div>
 
         {/* Legend */}
@@ -568,6 +572,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       </div>
 
       {/* Water Tracker */}
+      {waterTrackingEnabled && (
       <div className="bg-slate-900/50 rounded-3xl p-5 border border-white/5 mb-6">
         <div className="flex justify-between items-start mb-4">
           <div>
@@ -661,6 +666,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           </div>
         )}
       </div>
+      )}
 
       {/* Add Food Buttons (only show when viewing today) */}
       {isToday ? (

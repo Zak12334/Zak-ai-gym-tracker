@@ -77,6 +77,16 @@ const App: React.FC = () => {
   };
   const [showWorkoutDropdown, setShowWorkoutDropdown] = useState(false);
 
+  // Water tracking preference - some users (e.g. drink enough but never log it)
+  // can turn it off to hide all water UI. Defaults ON. Stored on-device.
+  const [waterTrackingEnabled, setWaterTrackingEnabledState] = useState<boolean>(() => {
+    return localStorage.getItem('waterTrackingEnabled') !== 'false';
+  });
+  const setWaterTrackingEnabled = (value: boolean) => {
+    setWaterTrackingEnabledState(value);
+    localStorage.setItem('waterTrackingEnabled', value ? 'true' : 'false');
+  };
+
   // Admin detection - Zak's account gets admin privileges (cross-split history, etc.)
   const isAdmin = profile?.name?.toLowerCase() === 'zak';
 
@@ -1830,6 +1840,22 @@ const App: React.FC = () => {
           )}
         </div>
 
+        {/* Water Tracking Section */}
+        <div className="bg-slate-900/30 rounded-3xl p-5 border border-white/10 mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-black text-white">Water Tracking</h3>
+              <p className="text-xs text-slate-500">Hide water if you'd rather not log it</p>
+            </div>
+            <button
+              onClick={() => setWaterTrackingEnabled(!waterTrackingEnabled)}
+              className={`w-14 h-8 rounded-full transition-colors ${waterTrackingEnabled ? 'bg-green-600' : 'bg-slate-700'} relative`}
+            >
+              <div className={`w-6 h-6 bg-white rounded-full absolute top-1 transition-transform ${waterTrackingEnabled ? 'translate-x-7' : 'translate-x-1'}`} />
+            </button>
+          </div>
+        </div>
+
         {/* Ramadan Mode Section */}
         <div className="bg-slate-900/30 rounded-3xl p-5 border border-white/10 mb-4">
           <div className="flex items-center justify-between mb-4">
@@ -2016,6 +2042,7 @@ const App: React.FC = () => {
           foods={foodLogs}
           waterLogs={waterLogs}
           goals={nutritionGoals}
+          waterTrackingEnabled={waterTrackingEnabled}
           savedMeals={savedMeals}
           onAddFood={addFoodLog}
           onAddWater={addWaterLog}
