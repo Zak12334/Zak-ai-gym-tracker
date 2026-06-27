@@ -212,53 +212,69 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     water: Math.min((totals.water / goals.water) * 100, 100)
   };
 
-  // Calculate weekly stats (last 7 days)
+  // Build a single day's totals from the logs
+  const buildDayStats = (date: string) => {
+    const dayFoods = foods.filter(f => f.date === date);
+    const dayWater = waterLogs.filter(w => w.date === date);
+    const calories = dayFoods.reduce((sum, f) => sum + f.calories, 0);
+    const protein = dayFoods.reduce((sum, f) => sum + f.protein, 0);
+    const water = dayWater.reduce((sum, w) => sum + w.amount, 0);
+    return {
+      date,
+      calories,
+      protein,
+      water,
+      hitCalories: calories >= goals.calories * 0.9,
+      hitProtein: protein >= goals.protein * 0.9,
+      hitWater: water >= goals.water * 0.9,
+      hasData: dayFoods.length > 0 || dayWater.length > 0
+    };
+  };
+
+  // Calculate weekly stats.
+  // IMPORTANT: averages and streaks are based on the most recent days you ACTUALLY
+  // logged, not the last 7 calendar days. A day with no logs means "not tracked",
+  // NOT "ate nothing" - so a holiday or any gap never drags your numbers to zero
+  // or breaks your streak. The heatmap below still shows the true calendar week.
   const getWeeklyStats = () => {
+    // Heatmap: the real last 7 calendar days (gray = not tracked)
     const last7Days: string[] = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       last7Days.push(date.toISOString().split('T')[0]);
     }
+    const dailyData = last7Days.map(buildDayStats);
 
-    const dailyData = last7Days.map(date => {
-      const dayFoods = foods.filter(f => f.date === date);
-      const dayWater = waterLogs.filter(w => w.date === date);
-      const calories = dayFoods.reduce((sum, f) => sum + f.calories, 0);
-      const protein = dayFoods.reduce((sum, f) => sum + f.protein, 0);
-      const water = dayWater.reduce((sum, w) => sum + w.amount, 0);
-      return {
-        date,
-        calories,
-        protein,
-        water,
-        hitCalories: calories >= goals.calories * 0.9,
-        hitProtein: protein >= goals.protein * 0.9,
-        hitWater: water >= goals.water * 0.9,
-        hasData: dayFoods.length > 0 || dayWater.length > 0
-      };
-    });
+    // Averages & streaks: walk back over the days that actually have data
+    const loggedDates = Array.from(new Set([
+      ...foods.map(f => f.date),
+      ...waterLogs.map(w => w.date)
+    ])).sort((a, b) => (a < b ? 1 : -1)); // most recent first
+    const loggedDays = loggedDates.map(buildDayStats);
 
-    const daysWithData = dailyData.filter(d => d.hasData);
-    const avgCalories = daysWithData.length > 0 ? Math.round(daysWithData.reduce((sum, d) => sum + d.calories, 0) / daysWithData.length) : 0;
-    const avgProtein = daysWithData.length > 0 ? Math.round(daysWithData.reduce((sum, d) => sum + d.protein, 0) / daysWithData.length) : 0;
-    const avgWater = daysWithData.length > 0 ? Math.round(daysWithData.reduce((sum, d) => sum + d.water, 0) / daysWithData.length) : 0;
+    // Average over the last 7 LOGGED days (skips unlogged gaps entirely)
+    const recentLogged = loggedDays.slice(0, 7);
+    const avgCalories = recentLogged.length > 0 ? Math.round(recentLogged.reduce((sum, d) => sum + d.calories, 0) / recentLogged.length) : 0;
+    const avgProtein = recentLogged.length > 0 ? Math.round(recentLogged.reduce((sum, d) => sum + d.protein, 0) / recentLogged.length) : 0;
+    const avgWater = recentLogged.length > 0 ? Math.round(recentLogged.reduce((sum, d) => sum + d.water, 0) / recentLogged.length) : 0;
 
-    // Calculate protein streak (consecutive days hitting 90%+ of goal)
+    // Streak = consecutive LOGGED days hitting 90%+ of goal.
+    // Unlogged days are skipped (not counted as a miss), so not logging never
+    // breaks the streak - only a logged day that misses the goal does.
     let proteinStreak = 0;
-    for (let i = dailyData.length - 1; i >= 0; i--) {
-      if (dailyData[i].hitProtein) proteinStreak++;
+    for (const d of loggedDays) {
+      if (d.hitProtein) proteinStreak++;
       else break;
     }
 
-    // Calculate calorie streak
     let calorieStreak = 0;
-    for (let i = dailyData.length - 1; i >= 0; i--) {
-      if (dailyData[i].hitCalories) calorieStreak++;
+    for (const d of loggedDays) {
+      if (d.hitCalories) calorieStreak++;
       else break;
     }
 
-    return { dailyData, avgCalories, avgProtein, avgWater, proteinStreak, calorieStreak, daysTracked: daysWithData.length };
+    return { dailyData, avgCalories, avgProtein, avgWater, proteinStreak, calorieStreak, daysTracked: recentLogged.length };
   };
 
   const weeklyStats = getWeeklyStats();
