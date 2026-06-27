@@ -37,6 +37,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
   const [grams, setGrams] = useState(100);
   const [isLoading, setIsLoading] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
 
   useEffect(() => {
     startScanner();
@@ -45,8 +46,66 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
     };
   }, []);
 
+  // Apply continuous autofocus. The camera's focus capabilities are often NOT
+  // ready the instant start() resolves, so we retry for a couple seconds until
+  // the device reports them - otherwise autofocus silently never gets applied
+  // (which is why the camera used to need a shake to focus).
+  const applyContinuousFocus = async (track: MediaStreamTrack, attempt = 0) => {
+    try {
+      const caps = track.getCapabilities?.() as (MediaTrackCapabilities & { focusMode?: string[] }) | undefined;
+      if (caps?.focusMode?.includes('continuous')) {
+        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet] });
+        return;
+      }
+      if (attempt < 6) {
+        setTimeout(() => applyContinuousFocus(track, attempt + 1), 400);
+      }
+    } catch {
+      if (attempt < 6) setTimeout(() => applyContinuousFocus(track, attempt + 1), 400);
+    }
+  };
+
+  // Tap-to-focus: pulse the focus so the user can force a fresh autofocus pass
+  // by tapping the screen instead of shaking the phone.
+  const triggerRefocus = async () => {
+    const track = trackRef.current;
+    if (!track) return;
+    try {
+      const caps = track.getCapabilities?.() as (MediaTrackCapabilities & { focusMode?: string[] }) | undefined;
+      const modes = caps?.focusMode || [];
+      if (modes.includes('manual') && modes.includes('continuous')) {
+        await track.applyConstraints({ advanced: [{ focusMode: 'manual' } as MediaTrackConstraintSet] });
+        await new Promise(r => setTimeout(r, 120));
+        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet] });
+      } else if (modes.includes('single-shot')) {
+        await track.applyConstraints({ advanced: [{ focusMode: 'single-shot' } as MediaTrackConstraintSet] });
+      } else if (modes.includes('continuous')) {
+        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet] });
+      }
+    } catch {
+      // Focus control not supported on this device - ignore
+    }
+  };
+
   const startScanner = async () => {
     try {
+      // If the browser already remembers a grant (Android/desktop), this avoids
+      // a redundant prompt path; if blocked, show a clear message instead of a
+      // prompt that can't succeed. iOS Safari lacks this API and falls through.
+      try {
+        const perms = (navigator as any).permissions;
+        if (perms?.query) {
+          const status = await perms.query({ name: 'camera' as PermissionName });
+          if (status.state === 'denied') {
+            setError("Camera is blocked for this site. Enable camera access in your browser settings, then try again.");
+            setIsScanning(false);
+            return;
+          }
+        }
+      } catch {
+        // Permissions API unsupported - proceed to request the camera directly
+      }
+
       scannerRef.current = new Html5Qrcode("barcode-reader");
       setIsScanning(true);
       setError(null);
@@ -57,28 +116,31 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
         aspectRatio: 1.777,
       };
 
+      // Request a higher-resolution rear camera stream - barcodes need detail to
+      // decode, and a sharper frame focuses faster.
+      const videoConstraints = {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      } as MediaTrackConstraints;
+
       await scannerRef.current.start(
-        { facingMode: "environment" },
+        videoConstraints,
         scannerConfig,
         onScanSuccess,
         () => {}
       );
 
-      // Try to enable continuous autofocus after camera starts
+      // Grab the live track and kick off continuous autofocus (with retry).
       try {
-        const videoElement = document.querySelector('#barcode-reader video') as HTMLVideoElement;
-        if (videoElement && videoElement.srcObject) {
+        const videoElement = document.querySelector('#barcode-reader video') as HTMLVideoElement | null;
+        if (videoElement?.srcObject) {
           const stream = videoElement.srcObject as MediaStream;
-          const track = stream.getVideoTracks()[0];
-          const capabilities = track.getCapabilities() as MediaTrackCapabilities & { focusMode?: string[] };
-          if (capabilities.focusMode?.includes('continuous')) {
-            await track.applyConstraints({
-              advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet]
-            });
-          }
+          const track = stream.getVideoTracks()[0] || null;
+          trackRef.current = track;
+          if (track) applyContinuousFocus(track);
         }
       } catch (focusErr) {
-        // Focus settings not supported, continue without them
         console.log("Autofocus not supported:", focusErr);
       }
     } catch (err: any) {
@@ -89,6 +151,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
   };
 
   const stopScanner = async () => {
+    trackRef.current = null;
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
@@ -262,11 +325,15 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
               <div className="w-full">
                 <div
                   id="barcode-reader"
-                  className="w-full"
+                  className="w-full cursor-pointer"
                   style={{ minHeight: '300px' }}
+                  onClick={triggerRefocus}
                 />
                 <p className="text-slate-500 text-sm mt-6 text-center">
-                  Point camera at product barcode
+                  Point camera at the barcode
+                </p>
+                <p className="text-slate-600 text-xs mt-1 text-center">
+                  Tap the screen to refocus
                 </p>
               </div>
             )}
