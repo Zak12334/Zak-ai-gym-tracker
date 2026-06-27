@@ -89,21 +89,12 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
 
   const startScanner = async () => {
     try {
-      // If the browser already remembers a grant (Android/desktop), this avoids
-      // a redundant prompt path; if blocked, show a clear message instead of a
-      // prompt that can't succeed. iOS Safari lacks this API and falls through.
-      try {
-        const perms = (navigator as any).permissions;
-        if (perms?.query) {
-          const status = await perms.query({ name: 'camera' as PermissionName });
-          if (status.state === 'denied') {
-            setError("Camera is blocked for this site. Enable camera access in your browser settings, then try again.");
-            setIsScanning(false);
-            return;
-          }
-        }
-      } catch {
-        // Permissions API unsupported - proceed to request the camera directly
+      // Clean up any previous instance attached to this element before reattaching,
+      // otherwise a retry can fail with the element already in use.
+      if (scannerRef.current) {
+        try { await scannerRef.current.stop(); } catch {}
+        try { scannerRef.current.clear(); } catch {}
+        scannerRef.current = null;
       }
 
       scannerRef.current = new Html5Qrcode("barcode-reader");
@@ -116,16 +107,15 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
         aspectRatio: 1.777,
       };
 
-      // Request a higher-resolution rear camera stream AND ask it to boot
-      // straight into continuous autofocus. Putting focusMode in the initial
-      // constraints means the camera starts focusing from the first frame
-      // instead of starting in a default mode and switching late (which made it
-      // re-hunt). Browsers that don't support focusMode here simply ignore it.
+      // Request the rear camera directly - this is what triggers the browser's
+      // permission prompt. Keep constraints soft (facingMode + ideal resolution)
+      // so the request never gets rejected; ideal hints can't cause a failure.
+      // Autofocus is applied AFTER the stream is live (see below), which can't
+      // break the camera the way an initial focus constraint can on some devices.
       const videoConstraints = {
-        facingMode: { ideal: "environment" },
+        facingMode: "environment",
         width: { ideal: 1920 },
         height: { ideal: 1080 },
-        advanced: [{ focusMode: "continuous" }],
       } as MediaTrackConstraints;
 
       await scannerRef.current.start(
@@ -149,7 +139,16 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
       }
     } catch (err: any) {
       console.error("Scanner error:", err);
-      setError("Camera access denied. Please allow camera permissions.");
+      const name = err?.name || '';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        setError("Camera permission was denied. Tap Try Again and choose Allow, or enable camera access for this site in your browser settings.");
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        setError("No camera found on this device.");
+      } else if (name === 'NotReadableError') {
+        setError("Camera is in use by another app. Close it and tap Try Again.");
+      } else {
+        setError("Couldn't start the camera. Tap Try Again.");
+      }
       setIsScanning(false);
     }
   };
@@ -163,6 +162,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
       } catch (err) {
         // Ignore
       }
+      scannerRef.current = null;
     }
     setIsScanning(false);
   };
@@ -307,12 +307,32 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
       <div className="flex-1 overflow-auto">
         {!product ? (
           <div className="flex flex-col items-center justify-center min-h-full p-6">
-            {isLoading ? (
+            {/* Camera mount is ALWAYS rendered (just hidden during loading/error)
+                so startScanner / Try Again can always find its element - otherwise
+                retrying races React and fails to find #barcode-reader. */}
+            <div className="w-full" style={{ display: (isLoading || error) ? 'none' : 'block' }}>
+              <div
+                id="barcode-reader"
+                className="w-full cursor-pointer"
+                style={{ minHeight: '300px' }}
+                onClick={triggerRefocus}
+              />
+              <p className="text-slate-500 text-sm mt-6 text-center">
+                Point camera at the barcode
+              </p>
+              <p className="text-slate-600 text-xs mt-1 text-center">
+                Tap the screen to refocus
+              </p>
+            </div>
+
+            {isLoading && (
               <div className="text-center py-20">
                 <div className="animate-spin h-12 w-12 border-4 border-green-500 border-t-transparent rounded-full mx-auto mb-4"></div>
                 <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">Looking up product...</p>
               </div>
-            ) : error ? (
+            )}
+
+            {error && !isLoading && (
               <div className="text-center py-20">
                 <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -324,21 +344,6 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
                 >
                   Try Again
                 </button>
-              </div>
-            ) : (
-              <div className="w-full">
-                <div
-                  id="barcode-reader"
-                  className="w-full cursor-pointer"
-                  style={{ minHeight: '300px' }}
-                  onClick={triggerRefocus}
-                />
-                <p className="text-slate-500 text-sm mt-6 text-center">
-                  Point camera at the barcode
-                </p>
-                <p className="text-slate-600 text-xs mt-1 text-center">
-                  Tap the screen to refocus
-                </p>
               </div>
             )}
           </div>
