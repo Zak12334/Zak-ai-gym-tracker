@@ -46,10 +46,10 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
     };
   }, []);
 
-  // Apply continuous autofocus. The camera's focus capabilities are often NOT
-  // ready the instant start() resolves, so we retry for a couple seconds until
-  // the device reports them - otherwise autofocus silently never gets applied
-  // (which is why the camera used to need a shake to focus).
+  // Fallback autofocus. The camera already boots in continuous focus via the
+  // initial constraints below; this re-asserts it for devices that ignore
+  // focusMode at getUserMedia time but accept it via applyConstraints once the
+  // stream warms up. It applies the moment the device reports the capability.
   const applyContinuousFocus = async (track: MediaStreamTrack, attempt = 0) => {
     try {
       const caps = track.getCapabilities?.() as (MediaTrackCapabilities & { focusMode?: string[] }) | undefined;
@@ -116,12 +116,16 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
         aspectRatio: 1.777,
       };
 
-      // Request a higher-resolution rear camera stream - barcodes need detail to
-      // decode, and a sharper frame focuses faster.
+      // Request a higher-resolution rear camera stream AND ask it to boot
+      // straight into continuous autofocus. Putting focusMode in the initial
+      // constraints means the camera starts focusing from the first frame
+      // instead of starting in a default mode and switching late (which made it
+      // re-hunt). Browsers that don't support focusMode here simply ignore it.
       const videoConstraints = {
         facingMode: { ideal: "environment" },
         width: { ideal: 1920 },
         height: { ideal: 1080 },
+        advanced: [{ focusMode: "continuous" }],
       } as MediaTrackConstraints;
 
       await scannerRef.current.start(
@@ -131,7 +135,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
         () => {}
       );
 
-      // Grab the live track and kick off continuous autofocus (with retry).
+      // Grab the live track and re-assert continuous autofocus as a fallback.
       try {
         const videoElement = document.querySelector('#barcode-reader video') as HTMLVideoElement | null;
         if (videoElement?.srcObject) {
